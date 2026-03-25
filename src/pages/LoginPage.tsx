@@ -12,12 +12,6 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-xl shadow-md p-8">
         <h1 className="text-2xl font-bold text-center mb-6">Connexion</h1>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -25,7 +19,10 @@ export default function LoginPage() {
             </label>
             <input
               type="email"
-              {...register('email', { required: 'Email requis' })}
+              {...register('email', {
+                required: 'Email requis',
+                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Email invalide' },
+              })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="vous@exemple.com"
             />
@@ -40,7 +37,10 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              {...register('password', { required: 'Mot de passe requis' })}
+              {...register('password', {
+                required: 'Mot de passe requis',
+                minLength: { value: 8, message: '8 caractères minimum' },
+              })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
             />
@@ -48,6 +48,12 @@ export default function LoginPage() {
               <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
             )}
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
