@@ -1,10 +1,15 @@
 \# Règles du projet
 
-
-
 \## Git
 
 \- Ne jamais commiter directement sur main
+
+\- Avant de démarrer une nouvelle US, toujours faire :
+
+&#x20; git checkout main
+
+&#x20; git pull origin main
+
 
 \- Toujours créer une branche : feature/nom-de-la-feature
 
