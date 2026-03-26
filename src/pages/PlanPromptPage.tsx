@@ -1,4 +1,5 @@
-import { useLocation, Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 
 interface LocationState {
   prompt?: string
@@ -6,10 +7,19 @@ interface LocationState {
 
 export default function PlanPromptPage() {
   const { state } = useLocation()
+  const navigate = useNavigate()
   const prompt =
     (state as LocationState | null)?.prompt ??
     localStorage.getItem('generatedPrompt') ??
     ''
+
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(prompt)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,36 +34,53 @@ export default function PlanPromptPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-10">
         <h2 className="text-2xl font-bold mb-2">Prompt généré</h2>
-        <p className="text-gray-500 text-sm mb-6">
-          Ce prompt a été généré à partir de votre profil. Vous pouvez le copier et
-          l'utiliser directement avec un modèle IA.
-        </p>
 
         {prompt ? (
           <>
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed">
-                {prompt}
-              </pre>
+            {/* Zone de texte non éditable */}
+            <textarea
+              readOnly
+              value={prompt}
+              rows={14}
+              className="w-full mt-4 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 font-mono leading-relaxed bg-white shadow-sm resize-none focus:outline-none"
+            />
+
+            {/* Message d'instruction */}
+            <div className="mt-4 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <span className="text-blue-500 text-lg mt-0.5">ℹ</span>
+              <p className="text-sm text-blue-800">
+                Collez ce prompt dans Claude, puis revenez ici pour importer le plan généré.
+              </p>
             </div>
 
-            <div className="mt-4 flex gap-3">
+            {/* Actions */}
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
-                onClick={() => navigator.clipboard.writeText(prompt)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleCopy}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Copier le prompt
+                {copied ? '✓ Copié !' : 'Copier le prompt'}
               </button>
-              <Link
-                to="/plan/new"
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+
+              <a
+                href="https://claude.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 px-4 py-2.5 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors text-center"
               >
-                Nouveau plan
-              </Link>
+                Ouvrir Claude ↗
+              </a>
+
+              <button
+                onClick={() => navigate('/plan/import')}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Importer mon plan
+              </button>
             </div>
           </>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+          <div className="mt-6 bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
             <p className="text-gray-500 mb-4">Aucun prompt disponible.</p>
             <Link to="/plan/new" className="text-blue-600 hover:underline text-sm">
               Créer un plan pour générer un prompt
