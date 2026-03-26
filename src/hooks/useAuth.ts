@@ -1,6 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { login, register, LoginPayload, RegisterPayload } from '../services/auth'
+
+function storeSession(token: string, userId: string, name: string) {
+  localStorage.setItem('jwt', token)
+  localStorage.setItem('userId', userId)
+  localStorage.setItem('name', name)
+}
+
+function extractApiError(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err) && err.response?.data?.message) {
+    return err.response.data.message as string
+  }
+  return fallback
+}
 
 export function useAuth() {
   const [loading, setLoading] = useState(false)
@@ -11,11 +25,11 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const { token } = await login(payload)
-      localStorage.setItem('jwt', token)
+      const { token, userId, name } = await login(payload)
+      storeSession(token, userId, name)
       navigate('/dashboard')
-    } catch {
-      setError('Email ou mot de passe incorrect.')
+    } catch (err) {
+      setError(extractApiError(err, 'Identifiants incorrects'))
     } finally {
       setLoading(false)
     }
@@ -25,11 +39,11 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const { token } = await register(payload)
-      localStorage.setItem('jwt', token)
+      const { token, userId, name } = await register(payload)
+      storeSession(token, userId, name)
       navigate('/dashboard')
-    } catch {
-      setError('Erreur lors de la création du compte.')
+    } catch (err) {
+      setError(extractApiError(err, 'Erreur lors de la création du compte.'))
     } finally {
       setLoading(false)
     }
@@ -37,6 +51,8 @@ export function useAuth() {
 
   const logout = () => {
     localStorage.removeItem('jwt')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('name')
     navigate('/login')
   }
 
