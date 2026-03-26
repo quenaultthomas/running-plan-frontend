@@ -1,53 +1,66 @@
-import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 
-interface PromptForm {
-  prompt: string
+interface LocationState {
+  prompt?: string
 }
 
 export default function PlanPromptPage() {
-  const { register, handleSubmit, formState: { errors } } = useForm<PromptForm>()
-
-  const onSubmit = (data: PromptForm) => {
-    console.log('Prompt soumis :', data.prompt)
-    // TODO: appel API génération IA
-  }
+  const { state } = useLocation()
+  const prompt =
+    (state as LocationState | null)?.prompt ??
+    localStorage.getItem('generatedPrompt') ??
+    ''
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-full max-w-lg bg-white rounded-xl shadow-md p-8">
-        <h1 className="text-2xl font-bold mb-6">Générer un plan par IA</h1>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Décrivez votre objectif
-            </label>
-            <textarea
-              {...register('prompt', { required: 'Veuillez décrire votre objectif' })}
-              rows={5}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex : Je veux courir un semi-marathon dans 3 mois, je cours 3 fois par semaine..."
-            />
-            {errors.prompt && (
-              <p className="text-red-500 text-xs mt-1">{errors.prompt.message}</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            Générer le plan
-          </button>
-        </form>
-
-        <div className="mt-4 text-center">
-          <Link to="/dashboard" className="text-blue-600 hover:underline text-sm">
-            Retour au tableau de bord
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold text-blue-600">Running Plan</h1>
+          <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+            Tableau de bord
           </Link>
         </div>
-      </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 py-10">
+        <h2 className="text-2xl font-bold mb-2">Prompt généré</h2>
+        <p className="text-gray-500 text-sm mb-6">
+          Ce prompt a été généré à partir de votre profil. Vous pouvez le copier et
+          l'utiliser directement avec un modèle IA.
+        </p>
+
+        {prompt ? (
+          <>
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed">
+                {prompt}
+              </pre>
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => navigator.clipboard.writeText(prompt)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Copier le prompt
+              </button>
+              <Link
+                to="/plan/new"
+                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Nouveau plan
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+            <p className="text-gray-500 mb-4">Aucun prompt disponible.</p>
+            <Link to="/plan/new" className="text-blue-600 hover:underline text-sm">
+              Créer un plan pour générer un prompt
+            </Link>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
