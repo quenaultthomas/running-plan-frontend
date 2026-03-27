@@ -152,3 +152,8 @@ export interface CompleteSessionResponse {
   completed: true
   completedAt: string
 }
+
+export interface ArchivePlanResponse {
+  planId: string
+  archived: true
+}

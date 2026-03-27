@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { getPlans } from '../services/plan'
+import { archivePlan, getPlans } from '../services/plan'
 import { PlanSummaryWithProgress } from '../types/plan'
 
 type FetchState =
@@ -20,12 +20,30 @@ function formatDate(iso: string) {
 export default function DashboardPage() {
   const { logout } = useAuth()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
+  const [archiving, setArchiving] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getPlans()
       .then((plans) => setState({ status: 'success', plans }))
       .catch(() => setState({ status: 'error' }))
   }, [])
+
+  const handleArchive = async (planId: string) => {
+    setArchiving((prev) => new Set(prev).add(planId))
+    try {
+      await archivePlan(planId)
+      setState((prev) => {
+        if (prev.status !== 'success') return prev
+        return { ...prev, plans: prev.plans.filter((p) => p.planId !== planId) }
+      })
+    } finally {
+      setArchiving((prev) => {
+        const next = new Set(prev)
+        next.delete(planId)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,10 +110,13 @@ export default function DashboardPage() {
                   ? Math.round((plan.completedSessionsCount / plan.sessionsCount) * 100)
                   : 0
               return (
-                <li key={plan.planId}>
+                <li
+                  key={plan.planId}
+                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                >
                   <Link
                     to={`/plan/${plan.planId}`}
-                    className="block bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+                    className="block p-6"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -123,6 +144,16 @@ export default function DashboardPage() {
                       </span>
                     </div>
                   </Link>
+
+                  <div className="px-6 pb-4">
+                    <button
+                      onClick={() => handleArchive(plan.planId)}
+                      disabled={archiving.has(plan.planId)}
+                      className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {archiving.has(plan.planId) ? 'Archivage…' : 'Archiver ce plan'}
+                    </button>
+                  </div>
                 </li>
               )
             })}
