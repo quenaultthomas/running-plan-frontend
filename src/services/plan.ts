@@ -9,6 +9,8 @@ import {
   PlanStats,
   PlanSummary,
   PlanSummaryWithProgress,
+  UpdateSessionRequest,
+  UpdateSessionResponse,
 } from '../types/plan'
 
 export const generatePrompt = async (
@@ -58,4 +60,16 @@ export const getPlanStats = async (planId: string): Promise<PlanStats> => {
 
 export const deletePlan = async (planId: string): Promise<void> => {
   await api.delete(`/api/plan/${planId}`)
+}
+
+export const updateSession = async (
+  planId: string,
+  sessionId: string,
+  payload: UpdateSessionRequest,
+): Promise<UpdateSessionResponse> => {
+  const { data } = await api.patch<UpdateSessionResponse>(
+    `/api/plan/${planId}/sessions/${sessionId}`,
+    payload,
+  )
+  return data
 }
