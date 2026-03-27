@@ -5,6 +5,7 @@ import DashboardPage from '../pages/DashboardPage'
 import PlanNewPage from '../pages/PlanNewPage'
 import PlanPromptPage from '../pages/PlanPromptPage'
 import PlanImportPage from '../pages/PlanImportPage'
+import PlanDetailPage from '../pages/PlanDetailPage'
 import ProtectedRoute from '../components/ProtectedRoute'
 
 export const router = createBrowserRouter([
@@ -34,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: '/plan/import',
         element: <PlanImportPage />,
+      },
+      {
+        path: '/plan/:planId',
+        element: <PlanDetailPage />,
       },
     ],
   },
