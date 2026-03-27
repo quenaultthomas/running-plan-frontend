@@ -35,8 +35,30 @@ type StatsState =
   | { status: 'success'; stats: PlanStats }
   | { status: 'error' }
 
+/** Parse robuste : gère "2026-03-30", "2026-03-30T00:00:00Z" et "2026-03-30 00:00:00" */
+function parseDate(iso: string): Date {
+  // Remplace le séparateur espace (non-standard) par T pour uniformiser
+  const normalised = iso.trim().replace(' ', 'T')
+  // Pour les dates seules (YYYY-MM-DD), on force l'interprétation en heure locale
+  // afin d'éviter le décalage UTC → jour précédent selon le fuseau
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalised)) {
+    const [y, m, d] = normalised.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+  return new Date(normalised)
+}
+
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', {
+  return parseDate(iso).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function formatDateLong(iso: string) {
+  return parseDate(iso).toLocaleDateString('fr-FR', {
+    weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -279,7 +301,7 @@ export default function DashboardPage() {
                         statsState.stats.nextSession.type}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {formatDate(statsState.stats.nextSession.date)}
+                      {formatDateLong(statsState.stats.nextSession.date)}
                     </p>
                   </>
                 ) : (
