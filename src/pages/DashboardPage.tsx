@@ -35,8 +35,9 @@ type StatsState =
   | { status: 'success'; stats: PlanStats }
   | { status: 'error' }
 
-/** Parse robuste : gère "2026-03-30", "2026-03-30T00:00:00Z" et "2026-03-30 00:00:00" */
-function parseDate(iso: string): Date {
+/** Parse robuste : gère "2026-03-30", "2026-03-30T00:00:00Z", "2026-03-30 00:00:00" et undefined/null */
+function parseDate(iso: string | null | undefined): Date {
+  if (!iso) return new Date()
   // Remplace le séparateur espace (non-standard) par T pour uniformiser
   const normalised = iso.trim().replace(' ', 'T')
   // Pour les dates seules (YYYY-MM-DD), on force l'interprétation en heure locale
@@ -48,7 +49,7 @@ function parseDate(iso: string): Date {
   return new Date(normalised)
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string | null | undefined) {
   return parseDate(iso).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
@@ -56,7 +57,7 @@ function formatDate(iso: string) {
   })
 }
 
-function formatDateLong(iso: string) {
+function formatDateLong(iso: string | null | undefined) {
   return parseDate(iso).toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -299,11 +300,11 @@ export default function DashboardPage() {
                 {statsState.stats.nextSession ? (
                   <>
                     <p className="text-sm font-semibold text-gray-800 mt-1">
-                      {SESSION_TYPE_LABELS[statsState.stats.nextSession.type] ??
-                        statsState.stats.nextSession.type}
+                      {SESSION_TYPE_LABELS[statsState.stats.nextSession?.type ?? ''] ??
+                        statsState.stats.nextSession?.type}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {formatDateLong(statsState.stats.nextSession.date)}
+                      {formatDateLong(statsState.stats.nextSession?.date)}
                     </p>
                   </>
                 ) : (
@@ -352,7 +353,7 @@ export default function DashboardPage() {
                     </div>
 
                     <p className="text-xs text-gray-400 mb-3">
-                      {formatDate(plan.startDate)} → {formatDate(plan.endDate)}
+                      {formatDate(plan.startDate ?? null)} → {formatDate(plan.endDate ?? null)}
                     </p>
 
                     <div className="flex items-center gap-3">
