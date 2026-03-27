@@ -158,6 +158,21 @@ export interface ArchivePlanResponse {
   archived: true
 }
 
+export interface UpdateSessionRequest {
+  durationMinutes?: number
+  distanceKm?: number
+  pace?: string
+  dayOfWeek?: DayOfWeek
+}
+
+export interface UpdateSessionResponse {
+  sessionId: string
+  durationMinutes: number | null
+  distanceKm: number | null
+  pace: string | null
+  dayOfWeek: DayOfWeek
+}
+
 // ─── Stats ────────────────────────────────────────────────────────────────
 
 export interface PlanStatsNextSession {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PlanDetailPage from '../pages/PlanDetailPage'
@@ -7,9 +7,11 @@ import PlanDetailPage from '../pages/PlanDetailPage'
 
 const mockGetPlanById = vi.hoisted(() => vi.fn())
 const mockCompleteSession = vi.hoisted(() => vi.fn())
+const mockUpdateSession = vi.hoisted(() => vi.fn())
 vi.mock('../services/plan', () => ({
   getPlanById: mockGetPlanById,
   completeSession: mockCompleteSession,
+  updateSession: mockUpdateSession,
 }))
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────
@@ -404,5 +406,202 @@ describe('PlanDetailPage — erreur API', () => {
     mockGetPlanById.mockRejectedValue(new Error('network'))
     renderPage()
     await screen.findByText(/Impossible de charger le plan/i)
+  })
+})
+
+// ─── Bouton "Modifier" ────────────────────────────────────────────────────
+
+describe('PlanDetailPage — bouton modifier', () => {
+  it('affiche le bouton "Modifier" sur chaque séance', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByText('Footing de récupération')
+    expect(screen.getByRole('button', { name: 'Modifier la séance' })).toBeInTheDocument()
+  })
+
+  it('ouvre la modale au clic sur "Modifier"', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Durée/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Distance/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Allure/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Jour/i)).toBeInTheDocument()
+  })
+
+  it('pré-remplit le formulaire avec les valeurs de la séance', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    expect(screen.getByLabelText<HTMLInputElement>(/Durée/i).value).toBe('45')
+    expect(screen.getByLabelText<HTMLInputElement>(/Distance/i).value).toBe('8')
+    expect(screen.getByLabelText<HTMLInputElement>(/Allure/i).value).toBe('5:30')
+  })
+
+  it('ferme la modale sans appeler l\'API au clic sur "Annuler"', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+    await user.click(screen.getByRole('button', { name: 'Annuler' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+})
+
+// ─── Validation du formulaire ─────────────────────────────────────────────
+
+describe('PlanDetailPage — validation formulaire modification', () => {
+  it('affiche une erreur si la durée est à 0', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    const durationInput = screen.getByLabelText(/Durée/i)
+    await user.clear(durationInput)
+    await user.type(durationInput, '0')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await screen.findByText(/La durée doit être supérieure à 0/i)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('affiche une erreur si l\'allure est mal formatée', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    const paceInput = screen.getByLabelText(/Allure/i)
+    await user.clear(paceInput)
+    await user.type(paceInput, '530')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await screen.findByText(/Format attendu : MM:SS/i)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('accepte une allure au format MM:SS valide', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockResolvedValue({
+      sessionId: 's3',
+      durationMinutes: 45,
+      distanceKm: 8,
+      pace: '6:00',
+      dayOfWeek: 'FRIDAY',
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    const paceInput = screen.getByLabelText(/Allure/i)
+    await user.clear(paceInput)
+    await user.type(paceInput, '6:00')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled())
+    expect(screen.queryByText(/Format attendu/i)).not.toBeInTheDocument()
+  })
+})
+
+// ─── Mise à jour locale après modification ─────────────────────────────────
+
+describe('PlanDetailPage — mise à jour locale après modification', () => {
+  it('appelle updateSession avec les bons paramètres', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockResolvedValue({
+      sessionId: 's3',
+      durationMinutes: 60,
+      distanceKm: 10,
+      pace: '6:00',
+      dayOfWeek: 'FRIDAY',
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    const dialog = screen.getByRole('dialog')
+    await user.clear(within(dialog).getByLabelText(/Durée/i))
+    await user.type(within(dialog).getByLabelText(/Durée/i), '60')
+    await user.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() =>
+      expect(mockUpdateSession).toHaveBeenCalledWith(
+        'plan-1',
+        's3',
+        expect.objectContaining({ durationMinutes: 60 }),
+      ),
+    )
+  })
+
+  it('ferme la modale après succès', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockResolvedValue({
+      sessionId: 's3',
+      durationMinutes: 60,
+      distanceKm: 8,
+      pace: '5:30',
+      dayOfWeek: 'FRIDAY',
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockGetPlanById).toHaveBeenCalledTimes(1)
+  })
+
+  it('met à jour la durée affichée après succès', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockResolvedValue({
+      sessionId: 's3',
+      durationMinutes: 60,
+      distanceKm: 8,
+      pace: '5:30',
+      dayOfWeek: 'FRIDAY',
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+
+    const dialog = screen.getByRole('dialog')
+    await user.clear(within(dialog).getByLabelText(/Durée/i))
+    await user.type(within(dialog).getByLabelText(/Durée/i), '60')
+    await user.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
+
+    await screen.findByText('60 min')
+    expect(mockGetPlanById).toHaveBeenCalledTimes(1)
+  })
+
+  it('affiche une erreur serveur si updateSession échoue', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await screen.findByText(/La modification a échoué/i)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('désactive le bouton "Enregistrer" pendant la requête', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockUpdateSession.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await screen.findByRole('button', { name: 'Enregistrement…' })
+    expect(screen.getByRole('button', { name: 'Enregistrement…' })).toBeDisabled()
   })
 })
