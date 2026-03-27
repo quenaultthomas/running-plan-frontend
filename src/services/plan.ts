@@ -1,5 +1,6 @@
 import api from './api'
 import {
+  CompleteSessionResponse,
   GeneratePromptRequest,
   GeneratePromptResponse,
   ImportPlanRequest,
@@ -30,5 +31,15 @@ export const getPlans = async (): Promise<PlanSummaryWithProgress[]> => {
 
 export const getPlanById = async (planId: string): Promise<PlanDetail> => {
   const { data } = await api.get<PlanDetail>(`/api/plan/${planId}`)
+  return data
+}
+
+export const completeSession = async (
+  planId: string,
+  sessionId: string,
+): Promise<CompleteSessionResponse> => {
+  const { data } = await api.patch<CompleteSessionResponse>(
+    `/api/plan/${planId}/sessions/${sessionId}/complete`,
+  )
   return data
 }
