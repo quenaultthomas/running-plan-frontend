@@ -116,6 +116,24 @@ describe('DashboardPage — erreur API', () => {
   })
 })
 
+// ─── Lien vers le plan ────────────────────────────────────────────────────
+
+describe('DashboardPage — liens vers les plans', () => {
+  it('chaque carte de plan est un lien vers /plan/:planId', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    expect(screen.getByRole('link', { name: /Plan marathon Paris/i })).toHaveAttribute(
+      'href',
+      '/plan/plan-1',
+    )
+    expect(screen.getByRole('link', { name: /Plan 10 km/i })).toHaveAttribute(
+      'href',
+      '/plan/plan-2',
+    )
+  })
+})
+
 // ─── Déconnexion ───────────────────────────────────────────────────────────
 
 describe('DashboardPage — déconnexion', () => {

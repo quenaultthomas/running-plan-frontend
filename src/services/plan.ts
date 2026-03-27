@@ -3,6 +3,7 @@ import {
   GeneratePromptRequest,
   GeneratePromptResponse,
   ImportPlanRequest,
+  PlanDetail,
   PlanSummary,
   PlanSummaryWithProgress,
 } from '../types/plan'
@@ -24,5 +25,10 @@ export const importPlan = async (payload: ImportPlanRequest): Promise<PlanSummar
 
 export const getPlans = async (): Promise<PlanSummaryWithProgress[]> => {
   const { data } = await api.get<PlanSummaryWithProgress[]>('/api/plan')
+  return data
+}
+
+export const getPlanById = async (planId: string): Promise<PlanDetail> => {
+  const { data } = await api.get<PlanDetail>(`/api/plan/${planId}`)
   return data
 }

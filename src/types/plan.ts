@@ -88,3 +88,61 @@ export interface PlanSummary {
 export interface PlanSummaryWithProgress extends PlanSummary {
   completedSessionsCount: number
 }
+
+// ─── Plan detail ──────────────────────────────────────────────────────────
+
+export type SessionType =
+  | 'EASY_RUN'
+  | 'LONG_RUN'
+  | 'INTERVAL'
+  | 'TEMPO'
+  | 'THRESHOLD'
+  | 'RECOVERY'
+  | 'HILL_REPEAT'
+  | 'CROSS_TRAINING'
+  | 'RACE'
+  | 'REST'
+
+export const SESSION_TYPE_LABELS: Record<string, string> = {
+  EASY_RUN: 'Footing facile',
+  LONG_RUN: 'Sortie longue',
+  INTERVAL: 'Intervalles',
+  TEMPO: 'Tempo',
+  THRESHOLD: 'Seuil',
+  RECOVERY: 'Récupération',
+  HILL_REPEAT: 'Côtes',
+  CROSS_TRAINING: 'Cross-training',
+  RACE: 'Course',
+  REST: 'Repos',
+}
+
+export interface PlanSession {
+  sessionId: string
+  sessionNumber: number
+  day: DayOfWeek
+  type: string
+  goal: string
+  durationMinutes: number | null
+  distanceKm: number | null
+  pace: string | null
+  completed: boolean
+  completedAt: string | null
+}
+
+export interface PlanWeek {
+  weekId: string
+  weekNumber: number
+  phase: string
+  startDate: string
+  endDate: string
+  sessions: PlanSession[]
+}
+
+export interface PlanDetail {
+  planId: string
+  name: string
+  goal: string
+  startDate: string
+  endDate: string
+  weeks: PlanWeek[]
+}

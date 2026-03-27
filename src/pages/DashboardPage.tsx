@@ -84,35 +84,37 @@ export default function DashboardPage() {
                   ? Math.round((plan.completedSessionsCount / plan.sessionsCount) * 100)
                   : 0
               return (
-                <li
-                  key={plan.planId}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-semibold text-lg">{plan.name}</h3>
-                      <p className="text-blue-600 text-sm">{plan.goal}</p>
+                <li key={plan.planId}>
+                  <Link
+                    to={`/plan/${plan.planId}`}
+                    className="block bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-semibold text-lg">{plan.name}</h3>
+                        <p className="text-blue-600 text-sm">{plan.goal}</p>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {plan.weeksCount} sem. · {plan.sessionsCount} séances
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-400">
-                      {plan.weeksCount} sem. · {plan.sessionsCount} séances
-                    </span>
-                  </div>
 
-                  <p className="text-xs text-gray-400 mb-3">
-                    {formatDate(plan.startDate)} → {formatDate(plan.endDate)}
-                  </p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      {formatDate(plan.startDate)} → {formatDate(plan.endDate)}
+                    </p>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-gray-100 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-gray-100 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-10 text-right">
+                        {progress}%
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-500 w-10 text-right">
-                      {progress}%
-                    </span>
-                  </div>
+                  </Link>
                 </li>
               )
             })}
