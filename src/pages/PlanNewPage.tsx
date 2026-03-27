@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { generatePrompt } from '../services/plan'
 import {
+  ALL_BLOCK_TYPES,
   GeneratePromptRequest,
   RunnerLevel,
   GoalType,
@@ -11,6 +12,7 @@ import {
   GOAL_TYPE_LABELS,
   DAY_LABELS,
   ALL_DAYS,
+  SESSION_BLOCK_FIELDS,
 } from '../types/plan'
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -135,6 +137,11 @@ export default function PlanNewPage() {
         constraints: {
           ...data.constraints,
           notes: data.constraints.notes || undefined,
+        },
+        sessionBlocks: {
+          enabled: true,
+          blockTypes: ALL_BLOCK_TYPES,
+          blockFields: [...SESSION_BLOCK_FIELDS],
         },
       }
       const { prompt } = await generatePrompt(payload)

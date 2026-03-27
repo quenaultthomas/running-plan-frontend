@@ -11,6 +11,60 @@ export type DayOfWeek =
   | 'SATURDAY'
   | 'SUNDAY'
 
+// ─── Blocs de séance ─────────────────────────────────────────────────────
+
+export type BlockType = 'WARMUP' | 'WORK' | 'RECOVERY' | 'COOLDOWN' | 'TECHNIQUE'
+
+export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
+  WARMUP: 'Échauffement',
+  WORK: 'Travail',
+  RECOVERY: 'Récupération',
+  COOLDOWN: 'Retour au calme',
+  TECHNIQUE: 'Technique',
+}
+
+export const BLOCK_TYPE_ICONS: Record<BlockType, string> = {
+  WARMUP: '🔥',
+  WORK: '⚡',
+  RECOVERY: '💚',
+  COOLDOWN: '❄️',
+  TECHNIQUE: '🎯',
+}
+
+export const ALL_BLOCK_TYPES: BlockType[] = [
+  'WARMUP',
+  'WORK',
+  'RECOVERY',
+  'COOLDOWN',
+  'TECHNIQUE',
+]
+
+export const SESSION_BLOCK_FIELDS = [
+  'blockType',
+  'label',
+  'durationMinutes',
+  'distanceKm',
+  'pace',
+  'repetitions',
+  'effortDurationSeconds',
+  'recoveryDurationSeconds',
+  'description',
+] as const
+
+export interface SessionBlock {
+  blockType: BlockType
+  label: string
+  durationMinutes?: number
+  distanceKm?: number
+  pace?: string
+  repetitions?: number
+  effortDurationSeconds?: number
+  recoveryDurationSeconds?: number
+  description?: string
+}
+
+// ─── Generate prompt ──────────────────────────────────────────────────────
+
 export interface GeneratePromptRequest {
   planName: string
   runner: {
@@ -27,6 +81,11 @@ export interface GeneratePromptRequest {
   constraints: {
     restDays: DayOfWeek[]
     notes?: string
+  }
+  sessionBlocks: {
+    enabled: true
+    blockTypes: BlockType[]
+    blockFields: typeof SESSION_BLOCK_FIELDS[number][]
   }
 }
 
@@ -127,6 +186,7 @@ export interface PlanSession {
   pace: string | null
   completed: boolean
   completedAt: string | null
+  blocks?: SessionBlock[]
 }
 
 export interface PlanWeek {
