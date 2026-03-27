@@ -149,15 +149,34 @@ describe('DashboardPage — erreur API', () => {
   })
 })
 
-// ─── Bouton Créer un nouveau plan ─────────────────────────────────────────
+// ─── Boutons Créer / Importer ─────────────────────────────────────────────
 
-describe('DashboardPage — bouton nouveau plan', () => {
-  it('affiche le lien "Créer un nouveau plan" pointant vers /plan/new', async () => {
+describe('DashboardPage — boutons créer / importer', () => {
+  it('affiche les boutons "Créer" et "Importer" quand aucun plan actif', async () => {
     mockGetPlans.mockResolvedValue([])
     renderPage()
-    const link = screen.getByRole('link', { name: 'Créer un nouveau plan' })
-    expect(link).toBeInTheDocument()
-    expect(link).toHaveAttribute('href', '/plan/new')
+    await screen.findByText(/Aucun plan pour l'instant/i)
+    const linkNew = screen.getByRole('link', { name: 'Créer un nouveau plan' })
+    expect(linkNew).toBeInTheDocument()
+    expect(linkNew).toHaveAttribute('href', '/plan/new')
+    // Deux liens "Importer un plan" peuvent exister (header + section vide)
+    const importLinks = screen.getAllByRole('link', { name: 'Importer un plan' })
+    expect(importLinks.length).toBeGreaterThanOrEqual(1)
+    importLinks.forEach((l) => expect(l).toHaveAttribute('href', '/plan/import'))
+  })
+
+  it('masque les boutons "Créer" et "Importer" quand un plan actif existe', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    expect(
+      screen.queryByRole('link', { name: 'Créer un nouveau plan' }),
+    ).not.toBeInTheDocument()
+    // Le lien "Importer un plan" dans l'en-tête ne doit pas être présent
+    // (seul le lien dans la section "liste vide" peut exister, mais elle est cachée)
+    expect(
+      screen.queryByRole('link', { name: 'Importer un plan' }),
+    ).not.toBeInTheDocument()
   })
 })
 
