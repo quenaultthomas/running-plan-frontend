@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
@@ -10,10 +10,27 @@ vi.mock('../hooks/useAuth', () => ({ useAuth: mockUseAuth }))
 
 const mockGetPlans = vi.hoisted(() => vi.fn())
 const mockArchivePlan = vi.hoisted(() => vi.fn())
+const mockGetPlanStats = vi.hoisted(() => vi.fn())
 vi.mock('../services/plan', () => ({
   getPlans: mockGetPlans,
   archivePlan: mockArchivePlan,
+  getPlanStats: mockGetPlanStats,
 }))
+
+const STATS = {
+  totalSessions: 112,
+  completedSessions: 56,
+  completionPercentage: 50,
+  totalDistanceKm: 840,
+  completedDistanceKm: 420,
+  currentWeekNumber: 14,
+  totalWeeks: 28,
+  nextSession: {
+    date: '2026-04-07',
+    type: 'LONG_RUN',
+    goal: 'Sortie longue 20 km',
+  },
+}
 
 const PLANS = [
   {
@@ -40,6 +57,7 @@ const PLANS = [
 
 beforeEach(() => {
   mockUseAuth.mockReturnValue({ logout: vi.fn() })
+  mockGetPlanStats.mockResolvedValue(STATS)
 })
 
 afterEach(() => vi.clearAllMocks())
@@ -98,7 +116,7 @@ describe('DashboardPage — liste de plans', () => {
   it('affiche le pourcentage de progression correct', async () => {
     mockGetPlans.mockResolvedValue(PLANS)
     renderPage()
-    await screen.findByText('50%')
+    await screen.findAllByText('50%')
     expect(screen.getByText('0%')).toBeInTheDocument()
   })
 
@@ -219,5 +237,62 @@ describe('DashboardPage — déconnexion', () => {
     await user.click(screen.getByRole('button', { name: 'Déconnexion' }))
 
     expect(logoutMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─── Statistiques ──────────────────────────────────────────────────────────
+
+describe('DashboardPage — statistiques', () => {
+  it('appelle getPlanStats avec le planId du premier plan', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await waitFor(() => expect(mockGetPlanStats).toHaveBeenCalledWith('plan-1'))
+  })
+
+  it('affiche la carte Progression', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    const statsSection = await screen.findByRole('region', { name: 'Statistiques du plan actif' })
+    expect(within(statsSection).getByText('50%')).toBeInTheDocument()
+    expect(within(statsSection).getByText('56 / 112 séances')).toBeInTheDocument()
+  })
+
+  it('affiche la carte Distance', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Distance')
+    expect(screen.getByText('420 km')).toBeInTheDocument()
+    expect(screen.getByText('sur 840 km prévus')).toBeInTheDocument()
+  })
+
+  it('affiche la carte Semaines', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Semaines')
+    expect(screen.getByText('14')).toBeInTheDocument()
+    expect(screen.getByText('sur 28 semaines')).toBeInTheDocument()
+  })
+
+  it('affiche la carte Prochaine séance avec le type traduit', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Prochaine séance')
+    expect(screen.getByText('Sortie longue')).toBeInTheDocument()
+  })
+
+  it("affiche 'Aucune' si nextSession est null", async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockGetPlanStats.mockResolvedValue({ ...STATS, nextSession: null })
+    renderPage()
+    await screen.findByText('Prochaine séance')
+    expect(screen.getByText('Aucune')).toBeInTheDocument()
+  })
+
+  it("n'affiche pas les statistiques si la liste de plans est vide", async () => {
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    await screen.findByText(/Aucun plan pour l'instant/i)
+    expect(screen.queryByText('Progression')).not.toBeInTheDocument()
+    expect(mockGetPlanStats).not.toHaveBeenCalled()
   })
 })

@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { archivePlan, getPlans } from '../services/plan'
-import { PlanSummaryWithProgress } from '../types/plan'
+import { archivePlan, getPlans, getPlanStats } from '../services/plan'
+import { PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
 
 type FetchState =
   | { status: 'loading' }
   | { status: 'success'; plans: PlanSummaryWithProgress[] }
+  | { status: 'error' }
+
+type StatsState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; stats: PlanStats }
   | { status: 'error' }
 
 function formatDate(iso: string) {
@@ -21,10 +27,19 @@ export default function DashboardPage() {
   const { logout } = useAuth()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
   const [archiving, setArchiving] = useState<Set<string>>(new Set())
+  const [statsState, setStatsState] = useState<StatsState>({ status: 'idle' })
 
   useEffect(() => {
     getPlans()
-      .then((plans) => setState({ status: 'success', plans }))
+      .then((plans) => {
+        setState({ status: 'success', plans })
+        if (plans.length > 0) {
+          setStatsState({ status: 'loading' })
+          getPlanStats(plans[0].planId)
+            .then((stats) => setStatsState({ status: 'success', stats }))
+            .catch(() => setStatsState({ status: 'error' }))
+        }
+      })
       .catch(() => setState({ status: 'error' }))
   }, [])
 
@@ -92,7 +107,68 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Liste des plans ─────────────────────────────────────────── */}
+        {/* ── Section statistiques ─────────────────────────────────────── */}
+        {statsState.status === 'success' && (
+          <section aria-label="Statistiques du plan actif" className="mb-8">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Plan actif — statistiques
+            </h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {/* Progression */}
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-xs text-gray-500 mb-1">Progression</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {statsState.stats.completionPercentage}%
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {statsState.stats.completedSessions} / {statsState.stats.totalSessions} séances
+                </p>
+              </div>
+
+              {/* Distance */}
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-xs text-gray-500 mb-1">Distance</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {statsState.stats.completedDistanceKm} km
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  sur {statsState.stats.totalDistanceKm} km prévus
+                </p>
+              </div>
+
+              {/* Semaines */}
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-xs text-gray-500 mb-1">Semaines</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {statsState.stats.currentWeekNumber}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  sur {statsState.stats.totalWeeks} semaines
+                </p>
+              </div>
+
+              {/* Prochaine séance */}
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-xs text-gray-500 mb-1">Prochaine séance</p>
+                {statsState.stats.nextSession ? (
+                  <>
+                    <p className="text-sm font-semibold text-gray-800 mt-1">
+                      {SESSION_TYPE_LABELS[statsState.stats.nextSession.type] ??
+                        statsState.stats.nextSession.type}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {formatDate(statsState.stats.nextSession.date)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-1">Aucune</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Liste vide ──────────────────────────────────────────────── */}
         {state.status === 'success' && state.plans.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center text-gray-500 text-sm">
             Aucun plan pour l'instant.{' '}
@@ -102,6 +178,7 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Liste des plans ─────────────────────────────────────────── */}
         {state.status === 'success' && state.plans.length > 0 && (
           <ul className="space-y-4">
             {state.plans.map((plan) => {
