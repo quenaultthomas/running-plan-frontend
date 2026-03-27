@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { archivePlan, getPlans, getPlanStats } from '../services/plan'
+import { archivePlan, deletePlan, getPlans, getPlanStats } from '../services/plan'
 import { PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
 
 type FetchState =
@@ -23,10 +23,58 @@ function formatDate(iso: string) {
   })
 }
 
+// ─── Modale de confirmation ─────────────────────────────────────────────────
+
+interface ConfirmDeleteModalProps {
+  planName: string
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmDeleteModal({ planName, onConfirm, onCancel }: ConfirmDeleteModalProps) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    >
+      <div className="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full mx-4">
+        <h3 id="modal-title" className="text-lg font-semibold mb-2">
+          Supprimer le plan ?
+        </h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Le plan <span className="font-medium">« {planName} »</span> sera supprimé
+          définitivement. Cette action est irréversible.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { logout } = useAuth()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
   const [archiving, setArchiving] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState<Set<string>>(new Set())
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [statsState, setStatsState] = useState<StatsState>({ status: 'idle' })
 
   useEffect(() => {
@@ -60,8 +108,44 @@ export default function DashboardPage() {
     }
   }
 
+  const handleDeleteConfirm = async () => {
+    if (!confirmDeleteId) return
+    const planId = confirmDeleteId
+    setConfirmDeleteId(null)
+    setDeleteError(null)
+    setDeleting((prev) => new Set(prev).add(planId))
+    try {
+      await deletePlan(planId)
+      setState((prev) => {
+        if (prev.status !== 'success') return prev
+        return { ...prev, plans: prev.plans.filter((p) => p.planId !== planId) }
+      })
+    } catch {
+      setDeleteError('La suppression a échoué. Veuillez réessayer.')
+    } finally {
+      setDeleting((prev) => {
+        const next = new Set(prev)
+        next.delete(planId)
+        return next
+      })
+    }
+  }
+
+  const confirmingPlan =
+    confirmDeleteId && state.status === 'success'
+      ? state.plans.find((p) => p.planId === confirmDeleteId)
+      : null
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {confirmingPlan && (
+        <ConfirmDeleteModal
+          planName={confirmingPlan.name}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
+
       <header className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-600">Running Plan</h1>
@@ -92,6 +176,13 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* ── Erreur suppression ──────────────────────────────────────── */}
+        {deleteError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {deleteError}
+          </div>
+        )}
 
         {/* ── Chargement ─────────────────────────────────────────────── */}
         {state.status === 'loading' && (
@@ -222,13 +313,20 @@ export default function DashboardPage() {
                     </div>
                   </Link>
 
-                  <div className="px-6 pb-4">
+                  <div className="px-6 pb-4 flex gap-2">
                     <button
                       onClick={() => handleArchive(plan.planId)}
                       disabled={archiving.has(plan.planId)}
                       className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {archiving.has(plan.planId) ? 'Archivage…' : 'Archiver ce plan'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(plan.planId)}
+                      disabled={deleting.has(plan.planId)}
+                      className="text-xs px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {deleting.has(plan.planId) ? 'Suppression…' : 'Supprimer'}
                     </button>
                   </div>
                 </li>

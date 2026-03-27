@@ -55,3 +55,7 @@ export const getPlanStats = async (planId: string): Promise<PlanStats> => {
   const { data } = await api.get<PlanStats>(`/api/plan/${planId}/stats`)
   return data
 }
+
+export const deletePlan = async (planId: string): Promise<void> => {
+  await api.delete(`/api/plan/${planId}`)
+}

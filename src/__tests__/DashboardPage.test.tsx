@@ -10,10 +10,12 @@ vi.mock('../hooks/useAuth', () => ({ useAuth: mockUseAuth }))
 
 const mockGetPlans = vi.hoisted(() => vi.fn())
 const mockArchivePlan = vi.hoisted(() => vi.fn())
+const mockDeletePlan = vi.hoisted(() => vi.fn())
 const mockGetPlanStats = vi.hoisted(() => vi.fn())
 vi.mock('../services/plan', () => ({
   getPlans: mockGetPlans,
   archivePlan: mockArchivePlan,
+  deletePlan: mockDeletePlan,
   getPlanStats: mockGetPlanStats,
 }))
 
@@ -294,5 +296,109 @@ describe('DashboardPage — statistiques', () => {
     await screen.findByText(/Aucun plan pour l'instant/i)
     expect(screen.queryByText('Progression')).not.toBeInTheDocument()
     expect(mockGetPlanStats).not.toHaveBeenCalled()
+  })
+})
+
+// ─── Suppression ───────────────────────────────────────────────────────────
+
+describe('DashboardPage — suppression', () => {
+  it('affiche un bouton "Supprimer" pour chaque plan', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    const buttons = screen.getAllByRole('button', { name: 'Supprimer' })
+    expect(buttons).toHaveLength(2)
+  })
+
+  it('ouvre la modale de confirmation au clic sur "Supprimer"', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText(/Supprimer le plan/i)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Plan marathon Paris/)).toBeInTheDocument()
+  })
+
+  it('ferme la modale sans supprimer au clic sur "Annuler"', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+    await user.click(screen.getByRole('button', { name: 'Annuler' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockDeletePlan).not.toHaveBeenCalled()
+    expect(screen.getByText('Plan marathon Paris')).toBeInTheDocument()
+  })
+
+  it('appelle deletePlan avec le bon planId après confirmation', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockDeletePlan.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Supprimer' }))
+
+    await waitFor(() => expect(mockDeletePlan).toHaveBeenCalledWith('plan-1'))
+  })
+
+  it('retire le plan de la liste après suppression sans rechargement', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockDeletePlan.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Supprimer' }))
+
+    await waitFor(() =>
+      expect(screen.queryByText('Plan marathon Paris')).not.toBeInTheDocument(),
+    )
+    expect(mockGetPlans).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Plan 10 km')).toBeInTheDocument()
+  })
+
+  it("affiche un message d'erreur si la suppression échoue", async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockDeletePlan.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Supprimer' }))
+
+    await screen.findByText(/La suppression a échoué/i)
+    expect(screen.getByText('Plan marathon Paris')).toBeInTheDocument()
+  })
+
+  it('désactive le bouton pendant la suppression', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockDeletePlan.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Supprimer' })
+    await user.click(firstBtn)
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Supprimer' }))
+
+    await screen.findByRole('button', { name: 'Suppression…' })
+    expect(screen.getByRole('button', { name: 'Suppression…' })).toBeDisabled()
   })
 })
