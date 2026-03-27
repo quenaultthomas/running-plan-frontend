@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { CITATIONS, Citation } from '../data/citations'
 import { archivePlan, deletePlan, getPlans, getPlanStats } from '../services/plan'
-import { PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
+import { DAY_LABELS, PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
 
 // ─── Citation du jour ───────────────────────────────────────────────────────
 
@@ -304,7 +304,9 @@ export default function DashboardPage() {
                         statsState.stats.nextSession?.type}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {formatDateLong(statsState.stats.nextSession?.date)}
+                      {statsState.stats.nextSession?.day
+                        ? DAY_LABELS[statsState.stats.nextSession.day]
+                        : formatDateLong(statsState.stats.nextSession?.date)}
                     </p>
                   </>
                 ) : (

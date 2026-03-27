@@ -36,6 +36,7 @@ const STATS = {
   totalWeeks: 28,
   nextSession: {
     date: '2026-04-07',
+    day: 'TUESDAY' as const,
     type: 'LONG_RUN',
     goal: 'Sortie longue 20 km',
   },
@@ -311,38 +312,25 @@ describe('DashboardPage — statistiques', () => {
     expect(screen.getByText('Sortie longue')).toBeInTheDocument()
   })
 
-  it('affiche la date de la prochaine séance avec le jour de la semaine', async () => {
-    // 2026-04-07 est un mardi
+  it('affiche le jour de la semaine traduit depuis le champ day (pas de conversion de date)', async () => {
+    // day: 'TUESDAY' → DAY_LABELS → 'Mardi' (sans passer par parseDate)
     mockGetPlans.mockResolvedValue(PLANS)
     renderPage()
     await screen.findByText('Prochaine séance')
-    expect(screen.getByText(/mardi/i)).toBeInTheDocument()
-    expect(screen.getByText(/7 avril 2026/i)).toBeInTheDocument()
+    expect(screen.getByText('Mardi')).toBeInTheDocument()
   })
 
-  it('gère le format "YYYY-MM-DD HH:mm:ss" sans produire Invalid Date', async () => {
+  it('affiche SATURDAY comme "Samedi" (cas du bug original vendredi/samedi)', async () => {
     mockGetPlans.mockResolvedValue(PLANS)
     mockGetPlanStats.mockResolvedValue({
       ...STATS,
-      nextSession: { ...STATS.nextSession!, date: '2026-04-07 00:00:00' },
+      nextSession: { ...STATS.nextSession!, date: '2026-03-28T00:00:00Z', day: 'SATURDAY' as const },
     })
     renderPage()
     await screen.findByText('Prochaine séance')
-    expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/7 avril 2026/i)).toBeInTheDocument()
-  })
-
-  it('gère le format "YYYY-MM-DDTHH:mm:ssZ" sans produire Invalid Date', async () => {
-    mockGetPlans.mockResolvedValue(PLANS)
-    mockGetPlanStats.mockResolvedValue({
-      ...STATS,
-      nextSession: { ...STATS.nextSession!, date: '2026-04-07T00:00:00Z' },
-    })
-    renderPage()
-    await screen.findByText('Prochaine séance')
-    expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument()
-    // "avril 2026" peut apparaître plusieurs fois (date du plan + date séance), on vérifie juste l'absence d'erreur
-    expect(screen.getAllByText(/avril 2026/i).length).toBeGreaterThan(0)
+    expect(screen.getByText('Samedi')).toBeInTheDocument()
+    // Vendredi ne doit pas être affiché
+    expect(screen.queryByText('Vendredi')).not.toBeInTheDocument()
   })
 
   it("affiche 'Aucune' si nextSession est null", async () => {
@@ -353,16 +341,21 @@ describe('DashboardPage — statistiques', () => {
     expect(screen.getByText('Aucune')).toBeInTheDocument()
   })
 
-  it('ne plante pas si nextSession.date est undefined', async () => {
+  it('ne plante pas si nextSession.date est undefined (fallback sur day)', async () => {
     mockGetPlans.mockResolvedValue(PLANS)
     mockGetPlanStats.mockResolvedValue({
       ...STATS,
-      nextSession: { type: 'EASY_RUN', goal: 'Footing', date: undefined as unknown as string },
+      nextSession: {
+        type: 'EASY_RUN',
+        goal: 'Footing',
+        date: undefined as unknown as string,
+        day: 'MONDAY' as const,
+      },
     })
     renderPage()
     await screen.findByText('Prochaine séance')
+    expect(screen.getByText('Lundi')).toBeInTheDocument()
     expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/cannot read/i)).not.toBeInTheDocument()
   })
 
   it('ne plante pas si startDate ou endDate du plan est undefined', async () => {

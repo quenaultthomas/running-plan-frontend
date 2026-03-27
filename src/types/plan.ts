@@ -246,6 +246,7 @@ export interface UpdateSessionResponse {
 
 export interface PlanStatsNextSession {
   date: string
+  day: DayOfWeek
   type: string
   goal: string
 }
