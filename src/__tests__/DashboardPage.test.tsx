@@ -353,6 +353,31 @@ describe('DashboardPage — statistiques', () => {
     expect(screen.getByText('Aucune')).toBeInTheDocument()
   })
 
+  it('ne plante pas si nextSession.date est undefined', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockGetPlanStats.mockResolvedValue({
+      ...STATS,
+      nextSession: { type: 'EASY_RUN', goal: 'Footing', date: undefined as unknown as string },
+    })
+    renderPage()
+    await screen.findByText('Prochaine séance')
+    expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/cannot read/i)).not.toBeInTheDocument()
+  })
+
+  it('ne plante pas si startDate ou endDate du plan est undefined', async () => {
+    const planWithoutDates = {
+      ...PLANS[0],
+      startDate: undefined as unknown as string,
+      endDate: undefined as unknown as string,
+    }
+    mockGetPlans.mockResolvedValue([planWithoutDates])
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    // Pas de crash, la page s'affiche
+    expect(screen.getByText('Plan marathon Paris')).toBeInTheDocument()
+  })
+
   it("n'affiche pas les statistiques si la liste de plans est vide", async () => {
     mockGetPlans.mockResolvedValue([])
     renderPage()
