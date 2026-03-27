@@ -175,6 +175,8 @@ export const SESSION_TYPE_LABELS: Record<string, string> = {
   REST: 'Repos',
 }
 
+export type SessionStatus = 'PENDING' | 'COMPLETED' | 'SKIPPED'
+
 export interface PlanSession {
   sessionId: string
   sessionNumber: number
@@ -184,8 +186,9 @@ export interface PlanSession {
   durationMinutes: number | null
   distanceKm: number | null
   pace: string | null
-  completed: boolean
+  status: SessionStatus
   completedAt: string | null
+  skippedAt: string | null
   blocks?: SessionBlock[]
 }
 
@@ -211,6 +214,12 @@ export interface CompleteSessionResponse {
   sessionId: string
   completed: true
   completedAt: string
+}
+
+export interface SkipSessionResponse {
+  sessionId: string
+  status: 'SKIPPED'
+  skippedAt: string
 }
 
 export interface ArchivePlanResponse {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router-dom'
-import { completeSession, getPlanById, updateSession } from '../services/plan'
+import { completeSession, getPlanById, skipSession, updateSession } from '../services/plan'
 import {
   ALL_DAYS,
   BLOCK_TYPE_ICONS,
@@ -320,7 +320,27 @@ export default function PlanDetailPage() {
             ...week,
             sessions: week.sessions.map((s) =>
               s.sessionId === sessionId
-                ? { ...s, completed: true, completedAt }
+                ? { ...s, status: 'COMPLETED' as const, completedAt }
+                : s,
+            ),
+          })),
+        },
+      }
+    })
+  }
+
+  const handleSessionSkip = (sessionId: string, skippedAt: string) => {
+    setState((prev) => {
+      if (prev.status !== 'success') return prev
+      return {
+        ...prev,
+        plan: {
+          ...prev.plan,
+          weeks: prev.plan.weeks.map((week) => ({
+            ...week,
+            sessions: week.sessions.map((s) =>
+              s.sessionId === sessionId
+                ? { ...s, status: 'SKIPPED' as const, skippedAt }
                 : s,
             ),
           })),
@@ -389,6 +409,7 @@ export default function PlanDetailPage() {
             weekIdx={weekIdx}
             setWeekIdx={setWeekIdx}
             onSessionComplete={handleSessionComplete}
+            onSessionSkip={handleSessionSkip}
             onSessionUpdate={handleSessionUpdate}
           />
         )}
@@ -405,6 +426,7 @@ interface PlanViewProps {
   weekIdx: number
   setWeekIdx: (i: number) => void
   onSessionComplete: (sessionId: string, completedAt: string) => void
+  onSessionSkip: (sessionId: string, skippedAt: string) => void
   onSessionUpdate: (response: UpdateSessionResponse) => void
 }
 
@@ -414,6 +436,7 @@ function PlanView({
   weekIdx,
   setWeekIdx,
   onSessionComplete,
+  onSessionSkip,
   onSessionUpdate,
 }: PlanViewProps) {
   const week = plan.weeks[weekIdx]
@@ -461,6 +484,7 @@ function PlanView({
         isCurrent={weekIdx === todayIdx}
         planId={planId}
         onSessionComplete={onSessionComplete}
+        onSessionSkip={onSessionSkip}
         onSessionUpdate={onSessionUpdate}
       />
     </div>
@@ -472,11 +496,13 @@ interface WeekCardProps {
   isCurrent: boolean
   planId: string
   onSessionComplete: (sessionId: string, completedAt: string) => void
+  onSessionSkip: (sessionId: string, skippedAt: string) => void
   onSessionUpdate: (response: UpdateSessionResponse) => void
 }
 
-function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionUpdate }: WeekCardProps) {
+function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, onSessionUpdate }: WeekCardProps) {
   const [completing, setCompleting] = useState<Set<string>>(new Set())
+  const [skipping, setSkipping] = useState<Set<string>>(new Set())
   const [editingSession, setEditingSession] = useState<PlanSession | null>(null)
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
 
@@ -496,6 +522,20 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionUpdate 
       onSessionComplete(result.sessionId, result.completedAt)
     } finally {
       setCompleting((prev) => {
+        const next = new Set(prev)
+        next.delete(sessionId)
+        return next
+      })
+    }
+  }
+
+  const handleSkip = async (sessionId: string) => {
+    setSkipping((prev) => new Set(prev).add(sessionId))
+    try {
+      const result = await skipSession(planId, sessionId)
+      onSessionSkip(result.sessionId, result.skippedAt)
+    } finally {
+      setSkipping((prev) => {
         const next = new Set(prev)
         next.delete(sessionId)
         return next
@@ -620,30 +660,60 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionUpdate 
                     Modifier
                   </button>
 
-                  {/* Statut / validation */}
-                  {session.completed ? (
+                  {/* COMPLETED */}
+                  {session.status === 'COMPLETED' && (
                     <>
                       <span
-                        className="text-xl"
-                        aria-label="Séance complétée"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full"
+                        aria-label="Séance réalisée"
                       >
-                        ✅
+                        ✅ Réalisée
                       </span>
                       {session.completedAt && (
                         <span className="text-xs text-gray-400">
-                          Effectuée le {formatCompletedAt(session.completedAt)}
+                          le {formatCompletedAt(session.completedAt)}
                         </span>
                       )}
                     </>
-                  ) : (
-                    <button
-                      onClick={() => handleComplete(session.sessionId)}
-                      disabled={completing.has(session.sessionId)}
-                      aria-label="Valider la séance"
-                      className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {completing.has(session.sessionId) ? '…' : 'Valider la séance'}
-                    </button>
+                  )}
+
+                  {/* SKIPPED */}
+                  {session.status === 'SKIPPED' && (
+                    <>
+                      <span
+                        className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 px-2 py-1 rounded-full"
+                        aria-label="Séance sautée"
+                      >
+                        ⏭️ Sautée
+                      </span>
+                      {session.skippedAt && (
+                        <span className="text-xs text-gray-400">
+                          le {formatCompletedAt(session.skippedAt)}
+                        </span>
+                      )}
+                    </>
+                  )}
+
+                  {/* PENDING */}
+                  {session.status === 'PENDING' && (
+                    <>
+                      <button
+                        onClick={() => handleComplete(session.sessionId)}
+                        disabled={completing.has(session.sessionId)}
+                        aria-label="Valider la séance"
+                        className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {completing.has(session.sessionId) ? '…' : 'Valider la séance'}
+                      </button>
+                      <button
+                        onClick={() => handleSkip(session.sessionId)}
+                        disabled={skipping.has(session.sessionId)}
+                        aria-label="Passer la séance"
+                        className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {skipping.has(session.sessionId) ? '…' : 'Passer la séance'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
