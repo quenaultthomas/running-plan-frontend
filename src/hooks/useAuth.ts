@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { login, register, LoginPayload, RegisterPayload } from '../services/auth'
 
-function storeSession(token: string, userId: string, name: string) {
+function storeSession(token: string, userId: string, username: string) {
   localStorage.setItem('jwt', token)
   localStorage.setItem('userId', userId)
-  localStorage.setItem('name', name)
+  localStorage.setItem('username', username)
 }
 
 function extractApiError(err: unknown, fallback: string): string {
@@ -25,8 +25,8 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const { token, userId, name } = await login(payload)
-      storeSession(token, userId, name)
+      const { token, userId, username } = await login(payload)
+      storeSession(token, userId, username)
       navigate('/dashboard')
     } catch (err) {
       setError(extractApiError(err, 'Identifiants incorrects'))
@@ -39,8 +39,8 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const { token, userId, name } = await register(payload)
-      storeSession(token, userId, name)
+      const { token, userId, username } = await register(payload)
+      storeSession(token, userId, username)
       navigate('/dashboard')
     } catch (err) {
       setError(extractApiError(err, 'Erreur lors de la création du compte.'))
@@ -52,7 +52,7 @@ export function useAuth() {
   const logout = () => {
     localStorage.removeItem('jwt')
     localStorage.removeItem('userId')
-    localStorage.removeItem('name')
+    localStorage.removeItem('username')
     navigate('/login')
   }
 

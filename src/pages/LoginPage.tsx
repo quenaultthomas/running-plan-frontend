@@ -15,19 +15,25 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(handleLogin)} noValidate className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              Pseudo
             </label>
             <input
-              type="email"
-              {...register('email', {
-                required: 'Email requis',
-                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Email invalide' },
+              type="text"
+              {...register('username', {
+                required: 'Pseudo requis',
+                minLength: { value: 3, message: '3 caractères minimum' },
+                maxLength: { value: 30, message: '30 caractères maximum' },
+                pattern: {
+                  value: /^[a-zA-Z0-9_-]+$/,
+                  message: 'Lettres, chiffres, - et _ uniquement',
+                },
               })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="vous@exemple.com"
+              placeholder="mon_pseudo"
+              autoComplete="username"
             />
-            {errors.email && (
-              <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+            {errors.username && (
+              <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>
             )}
           </div>
 
@@ -43,6 +49,7 @@ export default function LoginPage() {
               })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
+              autoComplete="current-password"
             />
             {errors.password && (
               <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>

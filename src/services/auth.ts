@@ -1,21 +1,19 @@
 import api from './api'
 
 export interface LoginPayload {
-  email: string
+  username: string
   password: string
 }
 
 export interface RegisterPayload {
-  name: string
-  email: string
+  username: string
   password: string
 }
 
 export interface AuthResponse {
   token: string
   userId: string
-  email: string
-  name: string
+  username: string
 }
 
 export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
