@@ -44,12 +44,20 @@ export default function DashboardPage() {
       <main className="max-w-4xl mx-auto px-4 py-10">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Tableau de bord</h2>
-          <Link
-            to="/plan/import"
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Importer un plan
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              to="/plan/new"
+              className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Créer un nouveau plan
+            </Link>
+            <Link
+              to="/plan/import"
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Importer un plan
+            </Link>
+          </div>
         </div>
 
         {/* ── Chargement ─────────────────────────────────────────────── */}
