@@ -8,6 +8,13 @@ import DashboardPage from '../pages/DashboardPage'
 const mockUseAuth = vi.hoisted(() => vi.fn())
 vi.mock('../hooks/useAuth', () => ({ useAuth: mockUseAuth }))
 
+vi.mock('../data/citations', () => ({
+  CITATIONS: [
+    { text: 'La douleur est temporaire.', author: 'Lance Armstrong' },
+    { text: 'Le champion se relève.', author: 'Vince Lombardi' },
+  ],
+}))
+
 const mockGetPlans = vi.hoisted(() => vi.fn())
 const mockArchivePlan = vi.hoisted(() => vi.fn())
 const mockDeletePlan = vi.hoisted(() => vi.fn())
@@ -62,7 +69,10 @@ beforeEach(() => {
   mockGetPlanStats.mockResolvedValue(STATS)
 })
 
-afterEach(() => vi.clearAllMocks())
+afterEach(() => {
+  vi.clearAllMocks()
+  sessionStorage.clear()
+})
 
 function renderPage() {
   render(
@@ -400,5 +410,71 @@ describe('DashboardPage — suppression', () => {
 
     await screen.findByRole('button', { name: 'Suppression…' })
     expect(screen.getByRole('button', { name: 'Suppression…' })).toBeDisabled()
+  })
+})
+
+// ─── Citation motivante ────────────────────────────────────────────────────
+
+describe('DashboardPage — citation motivante', () => {
+  it('affiche une citation au chargement', async () => {
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    const quote = await screen.findByRole('figure')
+    expect(quote).toBeInTheDocument()
+    const blockquote = within(quote).getByRole('blockquote')
+    expect(blockquote.textContent).toMatch(/La douleur est temporaire|Le champion se relève/)
+  })
+
+  it('affiche le nom de l\'auteur en tant que légende', async () => {
+    sessionStorage.setItem(
+      'dashboard_citation',
+      JSON.stringify({ text: 'La douleur est temporaire.', author: 'Lance Armstrong' }),
+    )
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    await screen.findByRole('figure')
+    expect(screen.getByText('Lance Armstrong')).toBeInTheDocument()
+  })
+
+  it('utilise la citation du sessionStorage si présente', async () => {
+    sessionStorage.setItem(
+      'dashboard_citation',
+      JSON.stringify({ text: 'Le champion se relève.', author: 'Vince Lombardi' }),
+    )
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    await screen.findByRole('figure')
+    expect(screen.getByText('Vince Lombardi')).toBeInTheDocument()
+  })
+
+  it('stocke la citation dans le sessionStorage au premier rendu', async () => {
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    await screen.findByRole('figure')
+    const stored = sessionStorage.getItem('dashboard_citation')
+    expect(stored).not.toBeNull()
+    const parsed = JSON.parse(stored!)
+    expect(parsed).toHaveProperty('text')
+    expect(parsed).toHaveProperty('author')
+  })
+
+  it('conserve la même citation après un second rendu', async () => {
+    mockGetPlans.mockResolvedValue([])
+    const { unmount } = render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('figure')
+    const first = sessionStorage.getItem('dashboard_citation')
+    unmount()
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('figure')
+    expect(sessionStorage.getItem('dashboard_citation')).toBe(first)
   })
 })

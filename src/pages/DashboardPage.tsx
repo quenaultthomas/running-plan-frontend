@@ -1,8 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { CITATIONS, Citation } from '../data/citations'
 import { archivePlan, deletePlan, getPlans, getPlanStats } from '../services/plan'
 import { PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
+
+// ─── Citation du jour ───────────────────────────────────────────────────────
+
+const SESSION_KEY = 'dashboard_citation'
+
+function getSessionCitation(): Citation {
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored) as Citation
+      if (parsed.text && parsed.author) return parsed
+    }
+  } catch {
+    // ignore
+  }
+  const citation = CITATIONS[Math.floor(Math.random() * CITATIONS.length)]
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(citation))
+  return citation
+}
 
 type FetchState =
   | { status: 'loading' }
@@ -76,6 +96,7 @@ export default function DashboardPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [statsState, setStatsState] = useState<StatsState>({ status: 'idle' })
+  const [citation] = useState<Citation>(getSessionCitation)
 
   useEffect(() => {
     getPlans()
@@ -176,6 +197,16 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* ── Citation motivante ──────────────────────────────────────── */}
+        <figure className="mb-8 px-6 py-5 bg-blue-50 border-l-4 border-blue-400 rounded-r-xl">
+          <blockquote className="text-sm italic text-blue-900 leading-relaxed">
+            «&nbsp;{citation.text}&nbsp;»
+          </blockquote>
+          <figcaption className="mt-2 text-xs text-blue-700">
+            — <span className="font-bold">{citation.author}</span>
+          </figcaption>
+        </figure>
 
         {/* ── Erreur suppression ──────────────────────────────────────── */}
         {deleteError && (
