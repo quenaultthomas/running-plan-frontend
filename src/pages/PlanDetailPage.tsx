@@ -111,8 +111,18 @@ function BlockItem({ block }: { block: SessionBlock }) {
 type EditFormValues = {
   durationMinutes: string
   distanceKm: string
-  pace: string
   dayOfWeek: DayOfWeek | ''
+}
+
+/** Calcule l'allure MM:SS/km à partir de la durée (min) et de la distance (km). */
+function calcPace(durationMinutes: string, distanceKm: string): string | null {
+  const dur = Number(durationMinutes)
+  const dist = Number(distanceKm)
+  if (!durationMinutes || !distanceKm || dur <= 0 || dist <= 0) return null
+  const totalSeconds = Math.round((dur / dist) * 60)
+  const mm = Math.floor(totalSeconds / 60)
+  const ss = String(totalSeconds % 60).padStart(2, '0')
+  return `${mm}:${ss}`
 }
 
 interface EditSessionModalProps {
@@ -126,24 +136,29 @@ function EditSessionModal({ session, planId, onSuccess, onClose }: EditSessionMo
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<EditFormValues>({
     defaultValues: {
       durationMinutes: session.durationMinutes != null ? String(session.durationMinutes) : '',
       distanceKm: session.distanceKm != null ? String(session.distanceKm) : '',
-      pace: session.pace ?? '',
       dayOfWeek: session.day,
     },
   })
 
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  const durationValue = watch('durationMinutes')
+  const distanceValue = watch('distanceKm')
+  const calculatedPace = calcPace(durationValue, distanceValue)
+
   const onSubmit = async (values: EditFormValues) => {
     setSubmitError(null)
     const payload: Record<string, unknown> = {}
     if (values.durationMinutes !== '') payload.durationMinutes = Number(values.durationMinutes)
     if (values.distanceKm !== '') payload.distanceKm = Number(values.distanceKm)
-    if (values.pace !== '') payload.pace = values.pace
+    const pace = calcPace(values.durationMinutes, values.distanceKm)
+    if (pace !== null) payload.pace = pace
     if (values.dayOfWeek !== '') payload.dayOfWeek = values.dayOfWeek
 
     try {
@@ -220,29 +235,13 @@ function EditSessionModal({ session, planId, onSuccess, onClose }: EditSessionMo
               )}
             </div>
 
-            {/* Allure */}
-            <div>
-              <label htmlFor="edit-pace" className="block text-sm font-medium text-gray-700 mb-1">
-                Allure (MM:SS / km)
-              </label>
-              <input
-                id="edit-pace"
-                type="text"
-                placeholder="ex : 5:30"
-                className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.pace ? 'border-red-400' : 'border-gray-300'
-                }`}
-                {...register('pace', {
-                  validate: (v) =>
-                    v === '' ||
-                    /^\d{1,2}:\d{2}$/.test(v) ||
-                    "Format attendu : MM:SS (ex : 5:30)",
-                })}
-              />
-              {errors.pace && (
-                <p className="text-xs text-red-600 mt-1">{errors.pace.message}</p>
-              )}
-            </div>
+            {/* Allure calculée (lecture seule) */}
+            {calculatedPace !== null && (
+              <p className="text-sm text-gray-600">
+                Allure calculée :{' '}
+                <span className="font-mono font-semibold text-blue-700">{calculatedPace} min/km</span>
+              </p>
+            )}
 
             {/* Jour */}
             <div>

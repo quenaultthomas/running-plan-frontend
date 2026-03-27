@@ -483,7 +483,7 @@ describe('PlanDetailPage — bouton modifier', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByLabelText(/Durée/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Distance/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Allure/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Allure/i)).not.toBeInTheDocument()
     expect(screen.getByLabelText(/Jour/i)).toBeInTheDocument()
   })
 
@@ -495,7 +495,9 @@ describe('PlanDetailPage — bouton modifier', () => {
 
     expect(screen.getByLabelText<HTMLInputElement>(/Durée/i).value).toBe('45')
     expect(screen.getByLabelText<HTMLInputElement>(/Distance/i).value).toBe('8')
-    expect(screen.getByLabelText<HTMLInputElement>(/Allure/i).value).toBe('5:30')
+    // Allure calculée : 45 min / 8 km = 337.5 s → 5:38
+    expect(screen.getByText(/Allure calculée/i)).toBeInTheDocument()
+    expect(screen.getByText(/5:38 min\/km/i)).toBeInTheDocument()
   })
 
   it('ferme la modale sans appeler l\'API au clic sur "Annuler"', async () => {
@@ -528,54 +530,48 @@ describe('PlanDetailPage — validation formulaire modification', () => {
     expect(mockUpdateSession).not.toHaveBeenCalled()
   })
 
-  it('affiche une erreur si l\'allure est mal formatée', async () => {
+  it('affiche l\'allure calculée en temps réel quand durée et distance sont renseignées', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     const user = userEvent.setup()
     renderPage()
     await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
 
-    const paceInput = screen.getByLabelText(/Allure/i)
-    await user.clear(paceInput)
-    await user.type(paceInput, '530')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    const durationInput = screen.getByLabelText(/Durée/i)
+    const distanceInput = screen.getByLabelText(/Distance/i)
+    await user.clear(durationInput)
+    await user.clear(distanceInput)
 
-    await screen.findByText(/Format attendu : MM:SS/i)
-    expect(mockUpdateSession).not.toHaveBeenCalled()
+    // Pas encore d'allure calculée
+    expect(screen.queryByText(/Allure calculée/i)).not.toBeInTheDocument()
+
+    // 60 min / 10 km = 360 s = 6:00
+    await user.type(durationInput, '60')
+    await user.type(distanceInput, '10')
+    expect(screen.getByText(/Allure calculée/i)).toBeInTheDocument()
+    expect(screen.getByText(/6:00 min\/km/i)).toBeInTheDocument()
   })
 
-  it('accepte une allure au format MM:SS valide', async () => {
+  it("n'affiche pas l'allure calculée si la distance est absente", async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
-    mockUpdateSession.mockResolvedValue({
-      sessionId: 's3',
-      durationMinutes: 45,
-      distanceKm: 8,
-      pace: '6:00',
-      dayOfWeek: 'FRIDAY',
-    })
     const user = userEvent.setup()
     renderPage()
     await user.click(await screen.findByRole('button', { name: 'Modifier la séance' }))
 
-    const paceInput = screen.getByLabelText(/Allure/i)
-    await user.clear(paceInput)
-    await user.type(paceInput, '6:00')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
-
-    await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled())
-    expect(screen.queryByText(/Format attendu/i)).not.toBeInTheDocument()
+    await user.clear(screen.getByLabelText(/Distance/i))
+    expect(screen.queryByText(/Allure calculée/i)).not.toBeInTheDocument()
   })
 })
 
 // ─── Mise à jour locale après modification ─────────────────────────────────
 
 describe('PlanDetailPage — mise à jour locale après modification', () => {
-  it('appelle updateSession avec les bons paramètres', async () => {
+  it('appelle updateSession avec les bons paramètres dont le pace calculé', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     mockUpdateSession.mockResolvedValue({
       sessionId: 's3',
       durationMinutes: 60,
-      distanceKm: 10,
-      pace: '6:00',
+      distanceKm: 8,
+      pace: '7:30',
       dayOfWeek: 'FRIDAY',
     })
     const user = userEvent.setup()
@@ -587,11 +583,12 @@ describe('PlanDetailPage — mise à jour locale après modification', () => {
     await user.type(within(dialog).getByLabelText(/Durée/i), '60')
     await user.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
 
+    // 60 min / 8 km = 450 s = 7:30
     await waitFor(() =>
       expect(mockUpdateSession).toHaveBeenCalledWith(
         'plan-1',
         's3',
-        expect.objectContaining({ durationMinutes: 60 }),
+        expect.objectContaining({ durationMinutes: 60, distanceKm: 8, pace: '7:30' }),
       ),
     )
   })
