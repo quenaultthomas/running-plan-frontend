@@ -7,10 +7,12 @@ import PlanDetailPage from '../pages/PlanDetailPage'
 
 const mockGetPlanById = vi.hoisted(() => vi.fn())
 const mockCompleteSession = vi.hoisted(() => vi.fn())
+const mockSkipSession = vi.hoisted(() => vi.fn())
 const mockUpdateSession = vi.hoisted(() => vi.fn())
 vi.mock('../services/plan', () => ({
   getPlanById: mockGetPlanById,
   completeSession: mockCompleteSession,
+  skipSession: mockSkipSession,
   updateSession: mockUpdateSession,
 }))
 
@@ -25,8 +27,9 @@ const SESSION_BASE = {
   durationMinutes: 45,
   distanceKm: 8,
   pace: '5:30',
-  completed: false,
+  status: 'PENDING' as const,
   completedAt: null,
+  skippedAt: null,
 }
 
 const SESSION_DONE = {
@@ -39,8 +42,21 @@ const SESSION_DONE = {
   durationMinutes: 90,
   distanceKm: 18,
   pace: '5:45',
-  completed: true,
+  status: 'COMPLETED' as const,
   completedAt: '2026-03-20T08:00:00Z',
+  skippedAt: null,
+}
+
+const SESSION_SKIPPED = {
+  ...SESSION_BASE,
+  sessionId: 's5',
+  sessionNumber: 5,
+  day: 'THURSDAY' as const,
+  type: 'TEMPO',
+  goal: 'Tempo 40 min',
+  status: 'SKIPPED' as const,
+  completedAt: null,
+  skippedAt: '2026-03-21T09:00:00Z',
 }
 
 const WEEK_1 = {
@@ -242,14 +258,14 @@ describe('PlanDetailPage — séances', () => {
 // ─── Bouton "Valider la séance" ───────────────────────────────────────────
 
 describe('PlanDetailPage — bouton valider', () => {
-  it('affiche le bouton sur une séance non complétée', async () => {
+  it('affiche le bouton sur une séance PENDING', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    // WEEK_CURRENT (active) has SESSION_BASE (not completed)
+    // WEEK_CURRENT (active) has SESSION_BASE (PENDING)
     await screen.findByRole('button', { name: 'Valider la séance' })
   })
 
-  it("n'affiche pas le bouton sur une séance complétée", async () => {
+  it("n'affiche pas le bouton sur une séance COMPLETED", async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     const user = userEvent.setup()
     renderPage()
@@ -297,7 +313,7 @@ describe('PlanDetailPage — bouton valider', () => {
 // ─── Mise à jour locale après validation ──────────────────────────────────
 
 describe('PlanDetailPage — mise à jour locale', () => {
-  it("affiche ✅ après validation sans rechargement de la page", async () => {
+  it("affiche le badge ✅ Réalisée après validation sans rechargement", async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     mockCompleteSession.mockResolvedValue({
       sessionId: 's3',
@@ -309,8 +325,7 @@ describe('PlanDetailPage — mise à jour locale', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
 
-    await screen.findByLabelText('Séance complétée')
-    // getPlanById must NOT have been called a second time
+    await screen.findByLabelText('Séance réalisée')
     expect(mockGetPlanById).toHaveBeenCalledTimes(1)
   })
 
@@ -325,12 +340,12 @@ describe('PlanDetailPage — mise à jour locale', () => {
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
-    await screen.findByLabelText('Séance complétée')
+    await screen.findByLabelText('Séance réalisée')
 
     expect(screen.queryByRole('button', { name: 'Valider la séance' })).not.toBeInTheDocument()
   })
 
-  it('affiche "Effectuée le JJ/MM/YYYY" après validation', async () => {
+  it('affiche la date après validation', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     mockCompleteSession.mockResolvedValue({
       sessionId: 's3',
@@ -342,11 +357,10 @@ describe('PlanDetailPage — mise à jour locale', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
 
-    await screen.findByText(/Effectuée le/i)
-    expect(screen.getByText(/27\/03\/2026/)).toBeInTheDocument()
+    await screen.findByText(/27\/03\/2026/)
   })
 
-  it('affiche la date de validation pour une séance déjà complétée', async () => {
+  it('affiche la date pour une séance déjà COMPLETED', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     const user = userEvent.setup()
     renderPage()
@@ -356,22 +370,23 @@ describe('PlanDetailPage — mise à jour locale', () => {
     await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
     await screen.findByText('Sortie longue progressive')
 
-    expect(screen.getByText(/Effectuée le/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Séance réalisée')).toBeInTheDocument()
     expect(screen.getByText(/20\/03\/2026/)).toBeInTheDocument()
   })
 })
 
-// ─── Indicateur complété ──────────────────────────────────────────────────
+// ─── Indicateurs de statut ────────────────────────────────────────────────
 
-describe('PlanDetailPage — indicateur complété', () => {
-  it("n'affiche pas ✅ pour une séance non complétée", async () => {
+describe('PlanDetailPage — indicateurs de statut', () => {
+  it("n'affiche pas de badge pour une séance PENDING", async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
     await screen.findByText('Footing de récupération')
-    expect(screen.queryByLabelText('Séance complétée')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Séance réalisée')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Séance sautée')).not.toBeInTheDocument()
   })
 
-  it('affiche ✅ pour une séance déjà complétée (navigation vers semaine 2)', async () => {
+  it('affiche le badge ✅ Réalisée pour une séance COMPLETED', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     const user = userEvent.setup()
     renderPage()
@@ -380,7 +395,8 @@ describe('PlanDetailPage — indicateur complété', () => {
     await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
 
     await screen.findByText('Sortie longue progressive')
-    expect(screen.getByLabelText('Séance complétée')).toBeInTheDocument()
+    expect(screen.getByLabelText('Séance réalisée')).toBeInTheDocument()
+    expect(screen.getByText('✅ Réalisée')).toBeInTheDocument()
   })
 })
 
@@ -737,5 +753,105 @@ describe('PlanDetailPage — blocs de séance', () => {
 
     expect(screen.queryByText('Trottinement léger')).not.toBeInTheDocument()
     expect(screen.getByText('Voir les blocs (3)')).toBeInTheDocument()
+  })
+})
+
+// ─── Bouton "Passer la séance" ────────────────────────────────────────────
+
+describe('PlanDetailPage — passer la séance', () => {
+  it('affiche le bouton "Passer la séance" sur une séance PENDING', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByRole('button', { name: 'Passer la séance' })
+  })
+
+  it("n'affiche pas le bouton sur une séance COMPLETED", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Affûtage')
+
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Sortie longue progressive')
+
+    expect(screen.queryByRole('button', { name: 'Passer la séance' })).not.toBeInTheDocument()
+  })
+
+  it('appelle skipSession avec planId et sessionId', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockSkipSession.mockResolvedValue({
+      sessionId: 's3',
+      status: 'SKIPPED',
+      skippedAt: '2026-03-27T11:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Passer la séance' }))
+
+    await waitFor(() =>
+      expect(mockSkipSession).toHaveBeenCalledWith('plan-1', 's3'),
+    )
+  })
+
+  it('affiche le badge ⏭️ Sautée après avoir passé la séance', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockSkipSession.mockResolvedValue({
+      sessionId: 's3',
+      status: 'SKIPPED',
+      skippedAt: '2026-03-27T11:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Passer la séance' }))
+
+    await screen.findByLabelText('Séance sautée')
+    expect(screen.getByText('⏭️ Sautée')).toBeInTheDocument()
+    expect(mockGetPlanById).toHaveBeenCalledTimes(1)
+  })
+
+  it('affiche la date pour une séance déjà SKIPPED', async () => {
+    const weekSkipped = {
+      weekId: 'w-skip',
+      weekNumber: 10,
+      phase: 'Test',
+      startDate: '2026-05-01',
+      endDate: '2026-05-07',
+      sessions: [SESSION_SKIPPED],
+    }
+    mockGetPlanById.mockResolvedValue({ ...PLAN, weeks: [weekSkipped] })
+    renderPage()
+
+    await screen.findByLabelText('Séance sautée')
+    expect(screen.getByText(/21\/03\/2026/)).toBeInTheDocument()
+  })
+
+  it('désactive le bouton "Passer la séance" pendant la requête', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockSkipSession.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Passer la séance' }))
+
+    expect(screen.getByRole('button', { name: 'Passer la séance' })).toBeDisabled()
+  })
+
+  it('masque les boutons Valider et Passer après avoir passé la séance', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockSkipSession.mockResolvedValue({
+      sessionId: 's3',
+      status: 'SKIPPED',
+      skippedAt: '2026-03-27T11:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Passer la séance' }))
+    await screen.findByLabelText('Séance sautée')
+
+    expect(screen.queryByRole('button', { name: 'Valider la séance' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Passer la séance' })).not.toBeInTheDocument()
   })
 })

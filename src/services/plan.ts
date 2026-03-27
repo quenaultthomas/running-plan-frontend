@@ -9,6 +9,7 @@ import {
   PlanStats,
   PlanSummary,
   PlanSummaryWithProgress,
+  SkipSessionResponse,
   UpdateSessionRequest,
   UpdateSessionResponse,
 } from '../types/plan'
@@ -60,6 +61,16 @@ export const getPlanStats = async (planId: string): Promise<PlanStats> => {
 
 export const deletePlan = async (planId: string): Promise<void> => {
   await api.delete(`/api/plan/${planId}`)
+}
+
+export const skipSession = async (
+  planId: string,
+  sessionId: string,
+): Promise<SkipSessionResponse> => {
+  const { data } = await api.patch<SkipSessionResponse>(
+    `/api/plan/${planId}/sessions/${sessionId}/skip`,
+  )
+  return data
 }
 
 export const updateSession = async (
