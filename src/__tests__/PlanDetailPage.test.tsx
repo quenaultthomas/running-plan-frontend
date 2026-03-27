@@ -82,6 +82,7 @@ const SESSION_WITH_BLOCKS = {
   sessionId: 's4',
   sessionNumber: 4,
   day: 'TUESDAY' as const,
+  type: 'INTERVAL',
   blocks: [
     {
       blockType: 'WARMUP' as const,
@@ -676,6 +677,27 @@ describe('PlanDetailPage — blocs de séance', () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
     await screen.findByText('Footing de récupération')
+    expect(screen.queryByText(/Voir les blocs/i)).not.toBeInTheDocument()
+  })
+
+  it("n'affiche pas le bouton blocs pour une séance EASY_RUN même avec des blocs", async () => {
+    const easyRunWithBlocks = {
+      ...SESSION_WITH_BLOCKS,
+      sessionId: 's6',
+      type: 'EASY_RUN',
+    }
+    const plan = {
+      ...PLAN,
+      weeks: [{ ...WEEK_WITH_BLOCKS, sessions: [easyRunWithBlocks] }, ...PLAN.weeks],
+    }
+    mockGetPlanById.mockResolvedValue(plan)
+    renderPage()
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
     expect(screen.queryByText(/Voir les blocs/i)).not.toBeInTheDocument()
   })
 

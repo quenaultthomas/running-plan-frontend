@@ -620,8 +620,10 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
                     )}
                   </div>
 
-                  {/* Toggle blocs */}
-                  {session.blocks && session.blocks.length > 0 && (
+                  {/* Toggle blocs — uniquement pour INTERVAL et TEMPO */}
+                  {(session.type === 'INTERVAL' || session.type === 'TEMPO') &&
+                    session.blocks &&
+                    session.blocks.length > 0 && (
                     <button
                       onClick={() => toggleBlocks(session.sessionId)}
                       aria-expanded={expandedSessions.has(session.sessionId)}
@@ -635,7 +637,8 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
                   )}
 
                   {/* Liste des blocs */}
-                  {session.blocks &&
+                  {(session.type === 'INTERVAL' || session.type === 'TEMPO') &&
+                    session.blocks &&
                     session.blocks.length > 0 &&
                     expandedSessions.has(session.sessionId) && (
                       <ul
