@@ -116,6 +116,18 @@ describe('DashboardPage — erreur API', () => {
   })
 })
 
+// ─── Bouton Créer un nouveau plan ─────────────────────────────────────────
+
+describe('DashboardPage — bouton nouveau plan', () => {
+  it('affiche le lien "Créer un nouveau plan" pointant vers /plan/new', async () => {
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    const link = screen.getByRole('link', { name: 'Créer un nouveau plan' })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', '/plan/new')
+  })
+})
+
 // ─── Lien vers le plan ────────────────────────────────────────────────────
 
 describe('DashboardPage — liens vers les plans', () => {
