@@ -4,12 +4,15 @@ import { Link, useParams } from 'react-router-dom'
 import { completeSession, getPlanById, updateSession } from '../services/plan'
 import {
   ALL_DAYS,
+  BLOCK_TYPE_ICONS,
+  BLOCK_TYPE_LABELS,
   DAY_LABELS,
   DayOfWeek,
   PlanDetail,
   PlanSession,
   PlanWeek,
   SESSION_TYPE_LABELS,
+  SessionBlock,
   UpdateSessionResponse,
 } from '../types/plan'
 
@@ -57,6 +60,51 @@ type PageState =
   | { status: 'loading' }
   | { status: 'success'; plan: PlanDetail }
   | { status: 'error' }
+
+// ─── Affichage des blocs de séance ─────────────────────────────────────────
+
+function BlockItem({ block }: { block: SessionBlock }) {
+  const icon = BLOCK_TYPE_ICONS[block.blockType] ?? '▸'
+  const label = BLOCK_TYPE_LABELS[block.blockType] ?? block.blockType
+
+  const metrics: string[] = []
+  if (block.repetitions != null) metrics.push(`${block.repetitions} ×`)
+  if (block.effortDurationSeconds != null) {
+    const m = Math.floor(block.effortDurationSeconds / 60)
+    const s = block.effortDurationSeconds % 60
+    metrics.push(`effort ${m > 0 ? `${m}min ` : ''}${s > 0 ? `${s}s` : ''}`.trim())
+  }
+  if (block.recoveryDurationSeconds != null) {
+    const m = Math.floor(block.recoveryDurationSeconds / 60)
+    const s = block.recoveryDurationSeconds % 60
+    metrics.push(`récup. ${m > 0 ? `${m}min ` : ''}${s > 0 ? `${s}s` : ''}`.trim())
+  }
+  if (block.durationMinutes != null) metrics.push(`${block.durationMinutes} min`)
+  if (block.distanceKm != null) metrics.push(`${block.distanceKm} km`)
+  if (block.pace) metrics.push(`${block.pace} min/km`)
+
+  return (
+    <li className="flex items-start gap-3 py-2">
+      <span className="text-base mt-0.5 select-none" aria-hidden="true">
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-gray-700">{block.label}</span>
+          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+            {label}
+          </span>
+        </div>
+        {metrics.length > 0 && (
+          <p className="text-xs text-gray-500 mt-0.5">{metrics.join(' · ')}</p>
+        )}
+        {block.description && (
+          <p className="text-xs text-gray-400 italic mt-0.5">{block.description}</p>
+        )}
+      </div>
+    </li>
+  )
+}
 
 // ─── Modale de modification de séance ─────────────────────────────────────
 
@@ -430,6 +478,16 @@ interface WeekCardProps {
 function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionUpdate }: WeekCardProps) {
   const [completing, setCompleting] = useState<Set<string>>(new Set())
   const [editingSession, setEditingSession] = useState<PlanSession | null>(null)
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
+
+  const toggleBlocks = (sessionId: string) => {
+    setExpandedSessions((prev) => {
+      const next = new Set(prev)
+      if (next.has(sessionId)) next.delete(sessionId)
+      else next.add(sessionId)
+      return next
+    })
+  }
 
   const handleComplete = async (sessionId: string) => {
     setCompleting((prev) => new Set(prev).add(sessionId))
@@ -521,6 +579,34 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionUpdate 
                       <span>{session.pace} min/km</span>
                     )}
                   </div>
+
+                  {/* Toggle blocs */}
+                  {session.blocks && session.blocks.length > 0 && (
+                    <button
+                      onClick={() => toggleBlocks(session.sessionId)}
+                      aria-expanded={expandedSessions.has(session.sessionId)}
+                      aria-controls={`blocks-${session.sessionId}`}
+                      className="mt-2 text-xs text-blue-600 hover:underline focus:outline-none"
+                    >
+                      {expandedSessions.has(session.sessionId)
+                        ? 'Masquer les blocs'
+                        : `Voir les blocs (${session.blocks.length})`}
+                    </button>
+                  )}
+
+                  {/* Liste des blocs */}
+                  {session.blocks &&
+                    session.blocks.length > 0 &&
+                    expandedSessions.has(session.sessionId) && (
+                      <ul
+                        id={`blocks-${session.sessionId}`}
+                        className="mt-2 pl-1 divide-y divide-gray-100 border border-gray-100 rounded-lg px-3"
+                      >
+                        {session.blocks.map((block, idx) => (
+                          <BlockItem key={idx} block={block} />
+                        ))}
+                      </ul>
+                    )}
                 </div>
 
                 {/* Actions */}

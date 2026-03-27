@@ -61,6 +61,44 @@ const WEEK_2 = {
   sessions: [SESSION_DONE],
 }
 
+const SESSION_WITH_BLOCKS = {
+  ...SESSION_BASE,
+  sessionId: 's4',
+  sessionNumber: 4,
+  day: 'TUESDAY' as const,
+  blocks: [
+    {
+      blockType: 'WARMUP' as const,
+      label: 'Trottinement léger',
+      durationMinutes: 15,
+      description: 'Course facile + gammes',
+    },
+    {
+      blockType: 'WORK' as const,
+      label: '3 × 2 km @ 10km',
+      repetitions: 3,
+      distanceKm: 2,
+      pace: '4:30',
+      effortDurationSeconds: 480,
+      recoveryDurationSeconds: 120,
+    },
+    {
+      blockType: 'COOLDOWN' as const,
+      label: 'Marche récupération',
+      durationMinutes: 10,
+    },
+  ],
+}
+
+const WEEK_WITH_BLOCKS = {
+  weekId: 'w4',
+  weekNumber: 4,
+  phase: 'Intensité',
+  startDate: '2026-03-31',
+  endDate: '2026-04-06',
+  sessions: [SESSION_WITH_BLOCKS],
+}
+
 // Week containing today (2026-03-27)
 const WEEK_CURRENT = {
   weekId: 'w3',
@@ -603,5 +641,101 @@ describe('PlanDetailPage — mise à jour locale après modification', () => {
 
     await screen.findByRole('button', { name: 'Enregistrement…' })
     expect(screen.getByRole('button', { name: 'Enregistrement…' })).toBeDisabled()
+  })
+})
+
+// ─── Blocs de séance ──────────────────────────────────────────────────────
+
+describe('PlanDetailPage — blocs de séance', () => {
+  function renderWithBlocks() {
+    const plan = {
+      ...PLAN,
+      weeks: [WEEK_WITH_BLOCKS, ...PLAN.weeks],
+    }
+    mockGetPlanById.mockResolvedValue(plan)
+    renderPage()
+  }
+
+  it("n'affiche pas le bouton blocs pour une séance sans blocs", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByText('Footing de récupération')
+    expect(screen.queryByText(/Voir les blocs/i)).not.toBeInTheDocument()
+  })
+
+  it("affiche le bouton 'Voir les blocs (N)' si la séance a des blocs", async () => {
+    renderWithBlocks()
+    // Navigate to week 1 (WEEK_WITH_BLOCKS is idx 0 but today is idx 3, so navigate back)
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    // Navigate to WEEK_WITH_BLOCKS (idx 0 = first week, need 3 clicks back from idx 3)
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
+    expect(screen.getByText('Voir les blocs (3)')).toBeInTheDocument()
+  })
+
+  it('affiche les blocs au clic sur "Voir les blocs"', async () => {
+    renderWithBlocks()
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
+
+    await user.click(screen.getByText('Voir les blocs (3)'))
+
+    expect(screen.getByText('Trottinement léger')).toBeInTheDocument()
+    expect(screen.getByText('3 × 2 km @ 10km')).toBeInTheDocument()
+    expect(screen.getByText('Marche récupération')).toBeInTheDocument()
+  })
+
+  it('affiche le type de bloc traduit', async () => {
+    renderWithBlocks()
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
+
+    await user.click(screen.getByText('Voir les blocs (3)'))
+
+    expect(screen.getByText('Échauffement')).toBeInTheDocument()
+    expect(screen.getByText('Travail')).toBeInTheDocument()
+    expect(screen.getByText('Retour au calme')).toBeInTheDocument()
+  })
+
+  it('affiche la description du bloc si présente', async () => {
+    renderWithBlocks()
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
+
+    await user.click(screen.getByText('Voir les blocs (3)'))
+
+    expect(screen.getByText('Course facile + gammes')).toBeInTheDocument()
+  })
+
+  it('replie les blocs au second clic ("Masquer les blocs")', async () => {
+    renderWithBlocks()
+    await screen.findByText('Affûtage')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Intensité')
+
+    await user.click(screen.getByText('Voir les blocs (3)'))
+    await screen.findByText('Masquer les blocs')
+    await user.click(screen.getByText('Masquer les blocs'))
+
+    expect(screen.queryByText('Trottinement léger')).not.toBeInTheDocument()
+    expect(screen.getByText('Voir les blocs (3)')).toBeInTheDocument()
   })
 })
