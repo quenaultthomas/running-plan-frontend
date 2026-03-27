@@ -66,3 +66,25 @@ export const ALL_DAYS: DayOfWeek[] = [
   'SATURDAY',
   'SUNDAY',
 ]
+
+// ─── Import & plan list ───────────────────────────────────────────────────
+
+export interface ImportPlanRequest {
+  planJson: string
+}
+
+/** Réponse POST /api/plan/import (201) et élément de GET /api/plan */
+export interface PlanSummary {
+  planId: string
+  name: string
+  goal: string
+  startDate: string
+  endDate: string
+  weeksCount: number
+  sessionsCount: number
+}
+
+/** Élément de GET /api/plan — inclut la progression */
+export interface PlanSummaryWithProgress extends PlanSummary {
+  completedSessionsCount: number
+}
