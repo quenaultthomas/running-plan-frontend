@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getPlanById } from '../services/plan'
+import { completeSession, getPlanById } from '../services/plan'
 import {
   DAY_LABELS,
   PlanDetail,
@@ -22,6 +22,14 @@ function formatDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'short',
+  })
+}
+
+function formatCompletedAt(iso: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   })
 }
 
@@ -63,6 +71,26 @@ export default function PlanDetailPage() {
       .catch(() => setState({ status: 'error' }))
   }, [planId])
 
+  const handleSessionComplete = (sessionId: string, completedAt: string) => {
+    setState((prev) => {
+      if (prev.status !== 'success') return prev
+      return {
+        ...prev,
+        plan: {
+          ...prev.plan,
+          weeks: prev.plan.weeks.map((week) => ({
+            ...week,
+            sessions: week.sessions.map((s) =>
+              s.sessionId === sessionId
+                ? { ...s, completed: true, completedAt }
+                : s,
+            ),
+          })),
+        },
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
@@ -91,7 +119,13 @@ export default function PlanDetailPage() {
 
         {/* ── Contenu ─────────────────────────────────────────────────── */}
         {state.status === 'success' && (
-          <PlanView plan={state.plan} weekIdx={weekIdx} setWeekIdx={setWeekIdx} />
+          <PlanView
+            plan={state.plan}
+            planId={planId!}
+            weekIdx={weekIdx}
+            setWeekIdx={setWeekIdx}
+            onSessionComplete={handleSessionComplete}
+          />
         )}
       </main>
     </div>
@@ -102,11 +136,13 @@ export default function PlanDetailPage() {
 
 interface PlanViewProps {
   plan: PlanDetail
+  planId: string
   weekIdx: number
   setWeekIdx: (i: number) => void
+  onSessionComplete: (sessionId: string, completedAt: string) => void
 }
 
-function PlanView({ plan, weekIdx, setWeekIdx }: PlanViewProps) {
+function PlanView({ plan, planId, weekIdx, setWeekIdx, onSessionComplete }: PlanViewProps) {
   const week = plan.weeks[weekIdx]
   const todayIdx = currentWeekIndex(plan.weeks)
 
@@ -147,7 +183,12 @@ function PlanView({ plan, weekIdx, setWeekIdx }: PlanViewProps) {
       </div>
 
       {/* Carte de la semaine */}
-      <WeekCard week={week} isCurrent={weekIdx === todayIdx} />
+      <WeekCard
+        week={week}
+        isCurrent={weekIdx === todayIdx}
+        planId={planId}
+        onSessionComplete={onSessionComplete}
+      />
     </div>
   )
 }
@@ -155,9 +196,27 @@ function PlanView({ plan, weekIdx, setWeekIdx }: PlanViewProps) {
 interface WeekCardProps {
   week: PlanWeek
   isCurrent: boolean
+  planId: string
+  onSessionComplete: (sessionId: string, completedAt: string) => void
 }
 
-function WeekCard({ week, isCurrent }: WeekCardProps) {
+function WeekCard({ week, isCurrent, planId, onSessionComplete }: WeekCardProps) {
+  const [completing, setCompleting] = useState<Set<string>>(new Set())
+
+  const handleComplete = async (sessionId: string) => {
+    setCompleting((prev) => new Set(prev).add(sessionId))
+    try {
+      const result = await completeSession(planId, sessionId)
+      onSessionComplete(result.sessionId, result.completedAt)
+    } finally {
+      setCompleting((prev) => {
+        const next = new Set(prev)
+        next.delete(sessionId)
+        return next
+      })
+    }
+  }
+
   return (
     <div
       className={`bg-white rounded-xl shadow-sm overflow-hidden ${
@@ -221,12 +280,33 @@ function WeekCard({ week, isCurrent }: WeekCardProps) {
                 </div>
               </div>
 
-              {/* Indicateur complété */}
-              {session.completed && (
-                <span className="text-green-500 text-xl flex-shrink-0" aria-label="Séance complétée">
-                  ✅
-                </span>
-              )}
+              {/* Statut / action */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                {session.completed ? (
+                  <>
+                    <span
+                      className="text-xl"
+                      aria-label="Séance complétée"
+                    >
+                      ✅
+                    </span>
+                    {session.completedAt && (
+                      <span className="text-xs text-gray-400">
+                        Effectuée le {formatCompletedAt(session.completedAt)}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleComplete(session.sessionId)}
+                    disabled={completing.has(session.sessionId)}
+                    aria-label="Valider la séance"
+                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {completing.has(session.sessionId) ? '…' : 'Valider la séance'}
+                  </button>
+                )}
+              </div>
             </div>
           </li>
         ))}

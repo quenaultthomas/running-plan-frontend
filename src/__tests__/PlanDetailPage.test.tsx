@@ -6,7 +6,11 @@ import PlanDetailPage from '../pages/PlanDetailPage'
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
 const mockGetPlanById = vi.hoisted(() => vi.fn())
-vi.mock('../services/plan', () => ({ getPlanById: mockGetPlanById }))
+const mockCompleteSession = vi.hoisted(() => vi.fn())
+vi.mock('../services/plan', () => ({
+  getPlanById: mockGetPlanById,
+  completeSession: mockCompleteSession,
+}))
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -55,7 +59,7 @@ const WEEK_2 = {
   sessions: [SESSION_DONE],
 }
 
-// A week that contains today (2026-03-27) to test "current week" detection
+// Week containing today (2026-03-27)
 const WEEK_CURRENT = {
   weekId: 'w3',
   weekNumber: 3,
@@ -127,7 +131,6 @@ describe('PlanDetailPage — en-tête', () => {
   it('affiche les dates début/fin', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    // Both dates appear somewhere in the header
     await screen.findByText(/2 mars 2026/i)
     expect(screen.getByText(/15 octobre 2026/i)).toBeInTheDocument()
   })
@@ -162,13 +165,13 @@ describe('PlanDetailPage — séances', () => {
   it('affiche le jour traduit en français', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText('Vendredi') // FRIDAY in WEEK_CURRENT
+    await screen.findByText('Vendredi')
   })
 
   it('affiche le type traduit en français', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText('Footing facile') // EASY_RUN
+    await screen.findByText('Footing facile')
   })
 
   it("affiche l'objectif de la séance", async () => {
@@ -196,6 +199,128 @@ describe('PlanDetailPage — séances', () => {
   })
 })
 
+// ─── Bouton "Valider la séance" ───────────────────────────────────────────
+
+describe('PlanDetailPage — bouton valider', () => {
+  it('affiche le bouton sur une séance non complétée', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    // WEEK_CURRENT (active) has SESSION_BASE (not completed)
+    await screen.findByRole('button', { name: 'Valider la séance' })
+  })
+
+  it("n'affiche pas le bouton sur une séance complétée", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Affûtage')
+
+    // Navigate to week 2 (has SESSION_DONE)
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Sortie longue progressive')
+
+    expect(screen.queryByRole('button', { name: 'Valider la séance' })).not.toBeInTheDocument()
+  })
+
+  it('appelle completeSession avec planId et sessionId', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockCompleteSession.mockResolvedValue({
+      sessionId: 's3',
+      completed: true,
+      completedAt: '2026-03-27T10:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
+
+    await waitFor(() =>
+      expect(mockCompleteSession).toHaveBeenCalledWith('plan-1', 's3'),
+    )
+  })
+
+  it('désactive le bouton pendant la requête', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    // Never resolves → keeps button in loading state
+    mockCompleteSession.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+
+    const btn = await screen.findByRole('button', { name: 'Valider la séance' })
+    await user.click(btn)
+
+    // aria-label stays "Valider la séance"; the button must be disabled
+    expect(screen.getByRole('button', { name: 'Valider la séance' })).toBeDisabled()
+  })
+})
+
+// ─── Mise à jour locale après validation ──────────────────────────────────
+
+describe('PlanDetailPage — mise à jour locale', () => {
+  it("affiche ✅ après validation sans rechargement de la page", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockCompleteSession.mockResolvedValue({
+      sessionId: 's3',
+      completed: true,
+      completedAt: '2026-03-27T10:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
+
+    await screen.findByLabelText('Séance complétée')
+    // getPlanById must NOT have been called a second time
+    expect(mockGetPlanById).toHaveBeenCalledTimes(1)
+  })
+
+  it("masque le bouton après validation", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockCompleteSession.mockResolvedValue({
+      sessionId: 's3',
+      completed: true,
+      completedAt: '2026-03-27T10:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
+    await screen.findByLabelText('Séance complétée')
+
+    expect(screen.queryByRole('button', { name: 'Valider la séance' })).not.toBeInTheDocument()
+  })
+
+  it('affiche "Effectuée le JJ/MM/YYYY" après validation', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    mockCompleteSession.mockResolvedValue({
+      sessionId: 's3',
+      completed: true,
+      completedAt: '2026-03-27T10:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Valider la séance' }))
+
+    await screen.findByText(/Effectuée le/i)
+    expect(screen.getByText(/27\/03\/2026/)).toBeInTheDocument()
+  })
+
+  it('affiche la date de validation pour une séance déjà complétée', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Affûtage')
+
+    // Navigate to week 2 (SESSION_DONE, completedAt: '2026-03-20T08:00:00Z')
+    await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    await screen.findByText('Sortie longue progressive')
+
+    expect(screen.getByText(/Effectuée le/i)).toBeInTheDocument()
+    expect(screen.getByText(/20\/03\/2026/)).toBeInTheDocument()
+  })
+})
+
 // ─── Indicateur complété ──────────────────────────────────────────────────
 
 describe('PlanDetailPage — indicateur complété', () => {
@@ -203,17 +328,15 @@ describe('PlanDetailPage — indicateur complété', () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
     await screen.findByText('Footing de récupération')
-    // The completed session is in week 2, not current; no ✅ visible in week 3
     expect(screen.queryByLabelText('Séance complétée')).not.toBeInTheDocument()
   })
 
-  it('affiche ✅ pour une séance complétée (navigation vers semaine 2)', async () => {
+  it('affiche ✅ pour une séance déjà complétée (navigation vers semaine 2)', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     const user = userEvent.setup()
     renderPage()
-    await screen.findByText('Affûtage') // starts on week 3 (idx=2)
+    await screen.findByText('Affûtage')
 
-    // One click goes from idx=2 → idx=1 (week 2 with the completed session)
     await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
 
     await screen.findByText('Sortie longue progressive')
@@ -230,7 +353,6 @@ describe('PlanDetailPage — navigation', () => {
     renderPage()
     await screen.findByText('Affûtage')
 
-    // Navigate to first week
     await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
     await user.click(screen.getByRole('button', { name: 'Semaine précédente' }))
 
@@ -240,18 +362,15 @@ describe('PlanDetailPage — navigation', () => {
   it('désactive le bouton Suivant sur la dernière semaine', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText('Affûtage') // already on last week (idx=2)
+    await screen.findByText('Affûtage')
     expect(screen.getByRole('button', { name: 'Semaine suivante' })).toBeDisabled()
   })
 
   it('navigue vers la semaine suivante', async () => {
-    mockGetPlanById.mockResolvedValue({
-      ...PLAN,
-      weeks: [WEEK_1, WEEK_2],
-    })
+    mockGetPlanById.mockResolvedValue({ ...PLAN, weeks: [WEEK_1, WEEK_2] })
     const user = userEvent.setup()
     renderPage()
-    await screen.findByText('Base') // week 1 (no current week match → defaults to index 0)
+    await screen.findByText('Base')
 
     await user.click(screen.getByRole('button', { name: 'Semaine suivante' }))
 
@@ -259,10 +378,7 @@ describe('PlanDetailPage — navigation', () => {
   })
 
   it('navigue vers la semaine précédente', async () => {
-    mockGetPlanById.mockResolvedValue({
-      ...PLAN,
-      weeks: [WEEK_1, WEEK_2],
-    })
+    mockGetPlanById.mockResolvedValue({ ...PLAN, weeks: [WEEK_1, WEEK_2] })
     const user = userEvent.setup()
     renderPage()
     await screen.findByText('Base')

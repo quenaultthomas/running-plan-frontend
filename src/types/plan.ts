@@ -146,3 +146,9 @@ export interface PlanDetail {
   endDate: string
   weeks: PlanWeek[]
 }
+
+export interface CompleteSessionResponse {
+  sessionId: string
+  completed: true
+  completedAt: string
+}
