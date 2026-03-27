@@ -6,6 +6,7 @@ import {
   GeneratePromptResponse,
   ImportPlanRequest,
   PlanDetail,
+  PlanStats,
   PlanSummary,
   PlanSummaryWithProgress,
 } from '../types/plan'
@@ -47,5 +48,10 @@ export const completeSession = async (
 
 export const archivePlan = async (planId: string): Promise<ArchivePlanResponse> => {
   const { data } = await api.patch<ArchivePlanResponse>(`/api/plan/${planId}/archive`)
+  return data
+}
+
+export const getPlanStats = async (planId: string): Promise<PlanStats> => {
+  const { data } = await api.get<PlanStats>(`/api/plan/${planId}/stats`)
   return data
 }

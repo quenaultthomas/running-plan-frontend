@@ -157,3 +157,22 @@ export interface ArchivePlanResponse {
   planId: string
   archived: true
 }
+
+// ─── Stats ────────────────────────────────────────────────────────────────
+
+export interface PlanStatsNextSession {
+  date: string
+  type: string
+  goal: string
+}
+
+export interface PlanStats {
+  totalSessions: number
+  completedSessions: number
+  completionPercentage: number
+  totalDistanceKm: number
+  completedDistanceKm: number
+  currentWeekNumber: number
+  totalWeeks: number
+  nextSession: PlanStatsNextSession | null
+}
