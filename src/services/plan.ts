@@ -1,5 +1,6 @@
 import api from './api'
 import {
+  ArchivePlanResponse,
   CompleteSessionResponse,
   GeneratePromptRequest,
   GeneratePromptResponse,
@@ -41,5 +42,10 @@ export const completeSession = async (
   const { data } = await api.patch<CompleteSessionResponse>(
     `/api/plan/${planId}/sessions/${sessionId}/complete`,
   )
+  return data
+}
+
+export const archivePlan = async (planId: string): Promise<ArchivePlanResponse> => {
+  const { data } = await api.patch<ArchivePlanResponse>(`/api/plan/${planId}/archive`)
   return data
 }

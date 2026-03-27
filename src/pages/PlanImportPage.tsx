@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
-import { importPlan } from '../services/plan'
+import { archivePlan, importPlan } from '../services/plan'
 import { PlanSummary } from '../types/plan'
 
 // ─── État machine ──────────────────────────────────────────────────────────
@@ -11,6 +11,7 @@ type ImportState =
   | { status: 'loading' }
   | { status: 'preview'; plan: PlanSummary }
   | { status: 'error'; message: string }
+  | { status: 'conflict'; message: string; planId: string }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -22,6 +23,12 @@ function formatDate(iso: string) {
   })
 }
 
+function extractError(err: unknown): string {
+  return axios.isAxiosError(err) && err.response?.data?.message
+    ? (err.response.data.message as string)
+    : 'Une erreur est survenue. Veuillez réessayer.'
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function PlanImportPage() {
@@ -30,7 +37,6 @@ export default function PlanImportPage() {
   const [state, setState] = useState<ImportState>({ status: 'idle' })
 
   const handleValidate = async () => {
-    // Validation syntaxique côté client
     try {
       JSON.parse(jsonText)
     } catch {
@@ -43,17 +49,37 @@ export default function PlanImportPage() {
       const plan = await importPlan({ planJson: jsonText })
       setState({ status: 'preview', plan })
     } catch (err) {
-      const message =
-        axios.isAxiosError(err) && err.response?.data?.message
-          ? (err.response.data.message as string)
-          : 'Une erreur est survenue. Veuillez réessayer.'
-      setState({ status: 'error', message })
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        setState({
+          status: 'conflict',
+          message: err.response.data?.message ?? 'Un plan actif existe déjà.',
+          planId: err.response.data?.planId ?? '',
+        })
+      } else {
+        setState({ status: 'error', message: extractError(err) })
+      }
+    }
+  }
+
+  const handleArchiveAndReimport = async (planId: string) => {
+    setState({ status: 'loading' })
+    try {
+      await archivePlan(planId)
+      const plan = await importPlan({ planJson: jsonText })
+      setState({ status: 'preview', plan })
+    } catch (err) {
+      setState({ status: 'error', message: extractError(err) })
     }
   }
 
   const handleReset = () => {
     setState({ status: 'idle' })
   }
+
+  const showForm =
+    state.status === 'idle' ||
+    state.status === 'error' ||
+    state.status === 'conflict'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,7 +99,7 @@ export default function PlanImportPage() {
         </p>
 
         {/* ── Saisie JSON ─────────────────────────────────────────────── */}
-        {(state.status === 'idle' || state.status === 'error') && (
+        {showForm && (
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
             <label className="block text-sm font-medium text-gray-700">
               JSON du plan
@@ -86,10 +112,27 @@ export default function PlanImportPage() {
               placeholder={'{\n  "planName": "Mon plan",\n  ...\n}'}
             />
 
+            {/* Erreur générique */}
             {state.status === 'error' && (
               <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 <span className="mt-0.5">✕</span>
                 <span>{state.message}</span>
+              </div>
+            )}
+
+            {/* Conflit 409 */}
+            {state.status === 'conflict' && (
+              <div className="space-y-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-2 text-sm text-amber-800">
+                  <span className="mt-0.5">⚠</span>
+                  <span>{state.message}</span>
+                </div>
+                <button
+                  onClick={() => handleArchiveAndReimport(state.planId)}
+                  className="w-full py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                >
+                  Archiver mon plan actuel et importer
+                </button>
               </div>
             )}
 
@@ -114,7 +157,6 @@ export default function PlanImportPage() {
         {/* ── Aperçu ──────────────────────────────────────────────────── */}
         {state.status === 'preview' && (
           <div className="space-y-4">
-            {/* Carte récapitulatif */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-green-200">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-green-600 text-lg">✓</span>
@@ -144,7 +186,6 @@ export default function PlanImportPage() {
               </dl>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
                 onClick={handleReset}

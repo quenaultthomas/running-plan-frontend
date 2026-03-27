@@ -9,7 +9,11 @@ const mockUseAuth = vi.hoisted(() => vi.fn())
 vi.mock('../hooks/useAuth', () => ({ useAuth: mockUseAuth }))
 
 const mockGetPlans = vi.hoisted(() => vi.fn())
-vi.mock('../services/plan', () => ({ getPlans: mockGetPlans }))
+const mockArchivePlan = vi.hoisted(() => vi.fn())
+vi.mock('../services/plan', () => ({
+  getPlans: mockGetPlans,
+  archivePlan: mockArchivePlan,
+}))
 
 const PLANS = [
   {
@@ -58,9 +62,8 @@ describe('DashboardPage — rendu', () => {
   })
 
   it('affiche le spinner pendant le chargement', () => {
-    mockGetPlans.mockReturnValue(new Promise(() => {})) // never resolves
+    mockGetPlans.mockReturnValue(new Promise(() => {}))
     renderPage()
-    // spinner is a div with animate-spin class
     expect(document.querySelector('.animate-spin')).toBeInTheDocument()
   })
 })
@@ -95,7 +98,7 @@ describe('DashboardPage — liste de plans', () => {
   it('affiche le pourcentage de progression correct', async () => {
     mockGetPlans.mockResolvedValue(PLANS)
     renderPage()
-    await screen.findByText('50%')  // 56/112
+    await screen.findByText('50%')
     expect(screen.getByText('0%')).toBeInTheDocument()
   })
 
@@ -143,6 +146,63 @@ describe('DashboardPage — liens vers les plans', () => {
       'href',
       '/plan/plan-2',
     )
+  })
+})
+
+// ─── Archivage ────────────────────────────────────────────────────────────
+
+describe('DashboardPage — archivage', () => {
+  it('affiche un bouton "Archiver ce plan" pour chaque plan', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    const buttons = screen.getAllByRole('button', { name: 'Archiver ce plan' })
+    expect(buttons).toHaveLength(2)
+  })
+
+  it('appelle archivePlan avec le planId correct', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockArchivePlan.mockResolvedValue({ planId: 'plan-1', archived: true })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Archiver ce plan' })
+    await user.click(firstBtn)
+
+    await waitFor(() => expect(mockArchivePlan).toHaveBeenCalledWith('plan-1'))
+  })
+
+  it('retire le plan de la liste après archivage sans rechargement', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockArchivePlan.mockResolvedValue({ planId: 'plan-1', archived: true })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Archiver ce plan' })
+    await user.click(firstBtn)
+
+    await waitFor(() =>
+      expect(screen.queryByText('Plan marathon Paris')).not.toBeInTheDocument(),
+    )
+    // getPlans must NOT have been called a second time
+    expect(mockGetPlans).toHaveBeenCalledTimes(1)
+    // The other plan stays
+    expect(screen.getByText('Plan 10 km')).toBeInTheDocument()
+  })
+
+  it('désactive le bouton pendant la requête', async () => {
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockArchivePlan.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+
+    const [firstBtn] = screen.getAllByRole('button', { name: 'Archiver ce plan' })
+    await user.click(firstBtn)
+
+    expect(screen.getByRole('button', { name: 'Archivage…' })).toBeDisabled()
   })
 })
 

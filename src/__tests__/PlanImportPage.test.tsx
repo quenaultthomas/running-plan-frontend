@@ -12,11 +12,12 @@ vi.mock('react-router-dom', async (importOriginal) => {
 })
 
 const mockImportPlan = vi.hoisted(() => vi.fn())
+const mockArchivePlan = vi.hoisted(() => vi.fn())
 vi.mock('../services/plan', () => ({
   importPlan: mockImportPlan,
+  archivePlan: mockArchivePlan,
 }))
 
-// Make axios.isAxiosError work with our fake error objects
 vi.mock('axios', async (importOriginal) => {
   const actual = await importOriginal<typeof import('axios')>()
   return {
@@ -37,6 +38,14 @@ const VALID_PLAN = {
   sessionsCount: 112,
 }
 
+const CONFLICT_ERROR = {
+  isAxiosError: true,
+  response: {
+    status: 409,
+    data: { message: 'Un plan actif existe déjà.', planId: 'plan-actif-42' },
+  },
+}
+
 function renderPage() {
   render(
     <MemoryRouter>
@@ -45,8 +54,6 @@ function renderPage() {
   )
 }
 
-/** Simule la saisie dans la textarea via fireEvent pour éviter les conflits
- *  de syntaxe de userEvent avec les accolades JSON */
 function typeJson(value: string) {
   const textarea = screen.getByRole('textbox')
   fireEvent.change(textarea, { target: { value } })
@@ -93,7 +100,7 @@ describe('PlanImportPage — JSON syntaxiquement invalide', () => {
   })
 })
 
-// ─── Appel API réussi → aperçu ─────────────────────────────────────────────
+// ─── Import réussi → aperçu ────────────────────────────────────────────────
 
 describe('PlanImportPage — import réussi', () => {
   it("affiche l'aperçu avec les données du plan", async () => {
@@ -149,15 +156,14 @@ describe('PlanImportPage — import réussi', () => {
   })
 })
 
-// ─── Erreur API ────────────────────────────────────────────────────────────
+// ─── Erreur API générique ──────────────────────────────────────────────────
 
 describe('PlanImportPage — erreur API', () => {
   it("affiche le message d'erreur renvoyé par l'API", async () => {
     mockImportPlan.mockRejectedValue({
       isAxiosError: true,
-      response: { data: { message: 'JSON invalide ou structure incorrecte' } },
+      response: { status: 400, data: { message: 'JSON invalide ou structure incorrecte' } },
     })
-
     const user = userEvent.setup()
     renderPage()
 
@@ -174,6 +180,96 @@ describe('PlanImportPage — erreur API', () => {
 
     typeJson('{"ok":true}')
     await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+
+    await screen.findByText(/Une erreur est survenue/i)
+  })
+})
+
+// ─── Conflit 409 ──────────────────────────────────────────────────────────
+
+describe('PlanImportPage — conflit 409', () => {
+  it("affiche le message du 409 et le bouton d'archivage", async () => {
+    mockImportPlan.mockRejectedValue(CONFLICT_ERROR)
+    const user = userEvent.setup()
+    renderPage()
+
+    typeJson('{"planName":"test"}')
+    await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+
+    await screen.findByText('Un plan actif existe déjà.')
+    expect(
+      screen.getByRole('button', { name: 'Archiver mon plan actuel et importer' }),
+    ).toBeInTheDocument()
+  })
+
+  it('affiche toujours le formulaire JSON en cas de conflit', async () => {
+    mockImportPlan.mockRejectedValue(CONFLICT_ERROR)
+    const user = userEvent.setup()
+    renderPage()
+
+    typeJson('{"planName":"test"}')
+    await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+    await screen.findByText('Un plan actif existe déjà.')
+
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Valider et importer' })).toBeInTheDocument()
+  })
+
+  it("appelle archivePlan puis importPlan au clic sur 'Archiver mon plan actuel et importer'", async () => {
+    mockImportPlan
+      .mockRejectedValueOnce(CONFLICT_ERROR)
+      .mockResolvedValueOnce(VALID_PLAN)
+    mockArchivePlan.mockResolvedValue({ planId: 'plan-actif-42', archived: true })
+    const user = userEvent.setup()
+    renderPage()
+
+    typeJson('{"planName":"test"}')
+    await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+    await screen.findByText('Un plan actif existe déjà.')
+
+    await user.click(
+      screen.getByRole('button', { name: 'Archiver mon plan actuel et importer' }),
+    )
+
+    await waitFor(() => expect(mockArchivePlan).toHaveBeenCalledWith('plan-actif-42'))
+    await waitFor(() =>
+      expect(mockImportPlan).toHaveBeenCalledTimes(2),
+    )
+  })
+
+  it("affiche l'aperçu après archive + reimport réussi", async () => {
+    mockImportPlan
+      .mockRejectedValueOnce(CONFLICT_ERROR)
+      .mockResolvedValueOnce(VALID_PLAN)
+    mockArchivePlan.mockResolvedValue({ planId: 'plan-actif-42', archived: true })
+    const user = userEvent.setup()
+    renderPage()
+
+    typeJson('{"planName":"test"}')
+    await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+    await screen.findByText('Un plan actif existe déjà.')
+
+    await user.click(
+      screen.getByRole('button', { name: 'Archiver mon plan actuel et importer' }),
+    )
+
+    await screen.findByText('Plan validé avec succès')
+    expect(screen.getByText('Plan marathon')).toBeInTheDocument()
+  })
+
+  it("affiche une erreur générique si l'archivage échoue", async () => {
+    mockImportPlan.mockRejectedValueOnce(CONFLICT_ERROR)
+    mockArchivePlan.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    renderPage()
+
+    typeJson('{"planName":"test"}')
+    await user.click(screen.getByRole('button', { name: 'Valider et importer' }))
+    await screen.findByText('Un plan actif existe déjà.')
+
+    await user.click(
+      screen.getByRole('button', { name: 'Archiver mon plan actuel et importer' }),
+    )
 
     await screen.findByText(/Une erreur est survenue/i)
   })
