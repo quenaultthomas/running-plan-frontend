@@ -5,6 +5,7 @@ declare global {
     interface Chainable {
       login(username?: string, password?: string): Chainable<void>
       resetBackend(): Chainable<void>
+      registerUser(username?: string, password?: string): Chainable<void>
     }
   }
 }
@@ -31,6 +32,21 @@ Cypress.Commands.add('login', (
  */
 Cypress.Commands.add('resetBackend', () => {
   cy.request('DELETE', `${Cypress.env('CYPRESS_API_URL')}/api/test/reset`)
+})
+
+/**
+ * Crée l'utilisateur de test via l'API register.
+ * À appeler après resetBackend, avant login.
+ */
+Cypress.Commands.add('registerUser', (
+  username = Cypress.env('TEST_USERNAME'),
+  password = Cypress.env('TEST_PASSWORD'),
+) => {
+  cy.request({
+    method: 'POST',
+    url: `${Cypress.env('CYPRESS_API_URL')}/api/auth/register`,
+    body: { username, password },
+  })
 })
 
 export {}

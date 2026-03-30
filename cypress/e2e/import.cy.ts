@@ -2,7 +2,8 @@
 
 describe('Import de plan', () => {
   beforeEach(() => {
-    cy.request('DELETE', Cypress.env('CYPRESS_API_URL') + '/api/test/reset')
+    cy.resetBackend()
+    cy.registerUser()
     cy.login()
   })
 
