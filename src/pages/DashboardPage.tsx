@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 import { CITATIONS, Citation } from '../data/citations'
 import { archivePlan, deletePlan, getPlans, getPlanStats } from '../services/plan'
 import { DAY_LABELS, PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
@@ -113,6 +114,7 @@ function ConfirmDeleteModal({ planName, onConfirm, onCancel }: ConfirmDeleteModa
 
 export default function DashboardPage() {
   const { logout } = useAuth()
+  const { canInstall, install } = usePWAInstall()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
   const [archiving, setArchiving] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState<Set<string>>(new Set())
@@ -393,6 +395,24 @@ export default function DashboardPage() {
           </ul>
         )}
       </main>
+
+      {canInstall && (
+        <div
+          role="banner"
+          aria-label="Bannière d'installation de l'application"
+          className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-4 bg-white border-t border-gray-200 px-4 py-3 shadow-lg sm:px-6"
+        >
+          <p className="text-sm text-gray-700">
+            Installer l'application pour un accès rapide.
+          </p>
+          <button
+            onClick={install}
+            className="shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Installer
+          </button>
+        </div>
+      )}
     </div>
   )
 }
