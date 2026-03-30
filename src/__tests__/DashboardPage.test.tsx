@@ -8,6 +8,9 @@ import DashboardPage from '../pages/DashboardPage'
 const mockUseAuth = vi.hoisted(() => vi.fn())
 vi.mock('../hooks/useAuth', () => ({ useAuth: mockUseAuth }))
 
+const mockUsePWAInstall = vi.hoisted(() => vi.fn())
+vi.mock('../hooks/usePWAInstall', () => ({ usePWAInstall: mockUsePWAInstall }))
+
 vi.mock('../data/citations', () => ({
   CITATIONS: [
     { text: 'La douleur est temporaire.', author: 'Lance Armstrong' },
@@ -67,6 +70,7 @@ const PLANS = [
 
 beforeEach(() => {
   mockUseAuth.mockReturnValue({ logout: vi.fn() })
+  mockUsePWAInstall.mockReturnValue({ canInstall: false, install: vi.fn() })
   mockGetPlanStats.mockResolvedValue(STATS)
 })
 
@@ -527,6 +531,19 @@ describe('DashboardPage — citation motivante', () => {
     const parsed = JSON.parse(stored!)
     expect(parsed).toHaveProperty('text')
     expect(parsed).toHaveProperty('author')
+  })
+
+  it('affiche la bannière d\'installation quand canInstall est true', async () => {
+    mockUsePWAInstall.mockReturnValue({ canInstall: true, install: vi.fn() })
+    mockGetPlans.mockResolvedValue([])
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('figure')
+    expect(screen.getByRole('banner', { name: /installation/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /installer/i })).toBeInTheDocument()
   })
 
   it('conserve la même citation après un second rendu', async () => {
