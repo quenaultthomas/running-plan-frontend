@@ -8,8 +8,12 @@ export default defineConfig({
       TEST_USERNAME: 'cypress_user',
       TEST_PASSWORD: 'Cypress_password1',
     },
-    headers: {
-      'x-vercel-protection-bypass': process.env.CYPRESS_VERCEL_BYPASS ?? '',
+    setupNodeEvents(_on, config) {
+      if (process.env.CYPRESS_VERCEL_BYPASS) {
+        const bypass = process.env.CYPRESS_VERCEL_BYPASS
+        config.baseUrl = `${config.baseUrl}?x-vercel-protection-bypass=${bypass}`
+      }
+      return config
     },
     viewportWidth: 1280,
     viewportHeight: 800,
