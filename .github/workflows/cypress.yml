@@ -26,7 +26,7 @@ jobs:
       - name: Run Cypress E2E tests
         run: npx cypress run --config baseUrl=$CYPRESS_BASE_URL
         env:
-          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL || 'https://running-plan-frontend-git-staging-quenaultthomas-projects.vercel.app' }}
+          CYPRESS_BASE_URL: ${{ vars.CYPRESS_BASE_URL || 'https://running-plan-frontend-git-staging-quenaultthomas-projects.vercel.app' }}
           CYPRESS_API_URL: ${{ secrets.CYPRESS_API_URL || 'https://web-staging-2686.up.railway.app' }}
           CYPRESS_TEST_USERNAME: ${{ secrets.CYPRESS_TEST_USERNAME }}
           CYPRESS_TEST_PASSWORD: ${{ secrets.CYPRESS_TEST_PASSWORD }}
