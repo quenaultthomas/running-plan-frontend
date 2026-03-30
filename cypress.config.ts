@@ -2,7 +2,7 @@ import { defineConfig } from 'cypress'
 
 export default defineConfig({
   e2e: {
-    baseUrl: 'https://yours-running-plan-staging.netlify.app',
+    baseUrl: 'https://running-plan-frontend-git-staging-quenaultthomas-projects.vercel.app',
     env: {
       CYPRESS_API_URL: 'https://web-staging-2686.up.railway.app',
       TEST_USERNAME: 'cypress_user',
