@@ -1,0 +1,121 @@
+{
+  "planName": "Plan 10km Cypress E2E",
+  "goal": "10 km",
+  "startDate": "2026-04-07",
+  "endDate": "2026-04-20",
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "phase": "Base",
+      "startDate": "2026-04-07",
+      "endDate": "2026-04-13",
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "day": "MONDAY",
+          "type": "EASY_RUN",
+          "goal": "Footing de récupération",
+          "durationMinutes": 40,
+          "distanceKm": 7,
+          "pace": "5:42"
+        },
+        {
+          "sessionNumber": 2,
+          "day": "WEDNESDAY",
+          "type": "INTERVAL",
+          "goal": "Séance de vitesse 6 × 800m",
+          "durationMinutes": 55,
+          "distanceKm": 10,
+          "pace": "4:30",
+          "blocks": [
+            {
+              "blockType": "WARMUP",
+              "label": "Trottinement léger",
+              "durationMinutes": 15,
+              "description": "Course facile + éducatifs"
+            },
+            {
+              "blockType": "WORK",
+              "label": "6 × 800m @ VMA",
+              "repetitions": 6,
+              "distanceKm": 0.8,
+              "pace": "4:00",
+              "effortDurationSeconds": 192,
+              "recoveryDurationSeconds": 90,
+              "description": "Récup trot entre chaque répét"
+            },
+            {
+              "blockType": "COOLDOWN",
+              "label": "Retour au calme",
+              "durationMinutes": 10,
+              "description": "Footing très léger"
+            }
+          ]
+        },
+        {
+          "sessionNumber": 3,
+          "day": "SATURDAY",
+          "type": "LONG_RUN",
+          "goal": "Sortie longue endurance fondamentale",
+          "durationMinutes": 70,
+          "distanceKm": 12,
+          "pace": "5:50"
+        }
+      ]
+    },
+    {
+      "weekNumber": 2,
+      "phase": "Développement",
+      "startDate": "2026-04-14",
+      "endDate": "2026-04-20",
+      "sessions": [
+        {
+          "sessionNumber": 4,
+          "day": "MONDAY",
+          "type": "EASY_RUN",
+          "goal": "Footing facile",
+          "durationMinutes": 45,
+          "distanceKm": 8,
+          "pace": "5:37"
+        },
+        {
+          "sessionNumber": 5,
+          "day": "THURSDAY",
+          "type": "TEMPO",
+          "goal": "Tempo 20 min au seuil",
+          "durationMinutes": 50,
+          "distanceKm": 9,
+          "pace": "4:50",
+          "blocks": [
+            {
+              "blockType": "WARMUP",
+              "label": "Échauffement progressif",
+              "durationMinutes": 15
+            },
+            {
+              "blockType": "WORK",
+              "label": "Tempo 20 min",
+              "durationMinutes": 20,
+              "pace": "4:40",
+              "description": "Allure 10km race pace"
+            },
+            {
+              "blockType": "COOLDOWN",
+              "label": "Retour au calme",
+              "durationMinutes": 15
+            }
+          ]
+        },
+        {
+          "sessionNumber": 6,
+          "day": "SUNDAY",
+          "type": "LONG_RUN",
+          "goal": "Sortie longue progressive",
+          "durationMinutes": 80,
+          "distanceKm": 14,
+          "pace": "5:42"
+        }
+      ]
+    }
+  ]
+}
