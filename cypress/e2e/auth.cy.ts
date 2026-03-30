@@ -2,7 +2,8 @@
 
 describe('Authentification', () => {
   beforeEach(() => {
-    cy.request('DELETE', Cypress.env('CYPRESS_API_URL') + '/api/test/reset')
+    cy.resetBackend()
+    cy.registerUser()
   })
 
   it('affiche la page de connexion sur /', () => {
