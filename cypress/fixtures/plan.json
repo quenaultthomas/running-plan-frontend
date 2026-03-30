@@ -30,12 +30,14 @@
           "blocks": [
             {
               "blockType": "WARMUP",
+              "blockOrder": 1,
               "label": "Trottinement léger",
               "durationMinutes": 15,
               "description": "Course facile + éducatifs"
             },
             {
               "blockType": "WORK",
+              "blockOrder": 2,
               "label": "6 × 800m @ VMA",
               "repetitions": 6,
               "distanceKm": 0.8,
@@ -46,6 +48,7 @@
             },
             {
               "blockType": "COOLDOWN",
+              "blockOrder": 3,
               "label": "Retour au calme",
               "durationMinutes": 10,
               "description": "Footing très léger"
@@ -89,11 +92,13 @@
           "blocks": [
             {
               "blockType": "WARMUP",
+              "blockOrder": 1,
               "label": "Échauffement progressif",
               "durationMinutes": 15
             },
             {
               "blockType": "WORK",
+              "blockOrder": 2,
               "label": "Tempo 20 min",
               "durationMinutes": 20,
               "pace": "4:40",
@@ -101,6 +106,7 @@
             },
             {
               "blockType": "COOLDOWN",
+              "blockOrder": 3,
               "label": "Retour au calme",
               "durationMinutes": 15
             }
