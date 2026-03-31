@@ -36,13 +36,13 @@ describe('Visualisation du plan', () => {
 
   it('navigue entre les semaines avec les boutons Précédent/Suivant', function () {
     cy.visit(`/plan/${this.planId}`)
-    cy.contains('Semaine précédente').should('be.visible')
-    cy.contains('Semaine suivante').should('be.visible')
+    cy.get('[aria-label="Semaine précédente"]').should('be.visible')
+    cy.get('[aria-label="Semaine suivante"]').should('be.visible')
 
-    cy.contains('Semaine suivante').click()
+    cy.get('[aria-label="Semaine suivante"]').click()
     cy.contains(/semaine 2|développement/i).should('be.visible')
 
-    cy.contains('Semaine précédente').click()
+    cy.get('[aria-label="Semaine précédente"]').click()
     cy.contains(/semaine 1|base/i).should('be.visible')
   })
 
@@ -53,7 +53,7 @@ describe('Visualisation du plan', () => {
     // (semaine 1 si c'est la semaine courante, sinon naviguer)
     cy.get('body').then(($body) => {
       if (!$body.text().includes('6 × 800m')) {
-        cy.contains('Semaine précédente').click()
+        cy.get('[aria-label="Semaine précédente"]').click()
       }
     })
 
@@ -65,7 +65,7 @@ describe('Visualisation du plan', () => {
 
     cy.get('body').then(($body) => {
       if (!$body.text().includes('6 × 800m')) {
-        cy.contains('Semaine précédente').click()
+        cy.get('[aria-label="Semaine précédente"]').click()
       }
     })
 

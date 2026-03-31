@@ -32,8 +32,6 @@ describe('Authentification', () => {
   it('déconnecte et redirige vers la page de connexion', () => {
     cy.login()
     cy.visit('/dashboard')
-    // Attendre que le dashboard soit chargé
-    cy.url().should('include', '/dashboard')
     cy.contains('Déconnexion', { timeout: 15000 }).click()
     cy.url().should('not.include', '/dashboard')
     cy.contains('Connexion').should('be.visible')

@@ -23,15 +23,15 @@ describe('Interactions séances', () => {
   it('marque une séance comme réalisée', function () {
     cy.visit(`/plan/${this.planId}`)
 
-    cy.contains('Marquer comme réalisée').first().click()
-    cy.contains('Séance réalisée', { timeout: 10000 }).should('be.visible')
+    cy.contains('Valider la séance').first().click()
+    cy.get('[aria-label="Séance réalisée"]', { timeout: 10000 }).should('be.visible')
   })
 
   it('passe une séance (skip)', function () {
     cy.visit(`/plan/${this.planId}`)
 
     cy.contains('Passer la séance').first().click()
-    cy.contains('Séance sautée', { timeout: 10000 }).should('be.visible')
+    cy.get('[aria-label="Séance sautée"]', { timeout: 10000 }).should('be.visible')
   })
 
   it('ouvre la modale de modification d\'une séance', function () {
@@ -75,11 +75,11 @@ describe('Interactions séances', () => {
   it('les boutons d\'action disparaissent après complétion d\'une séance', function () {
     cy.visit(`/plan/${this.planId}`)
 
-    cy.contains('Marquer comme réalisée').first().click()
-    cy.contains('Séance réalisée', { timeout: 10000 }).should('be.visible')
+    cy.contains('Valider la séance').first().click()
+    cy.get('[aria-label="Séance réalisée"]', { timeout: 10000 }).should('be.visible')
 
     // Les boutons d'action ne doivent plus être visibles pour cette séance
-    cy.contains('Marquer comme réalisée').should('not.exist')
+    cy.contains('Valider la séance').should('not.exist')
     cy.contains('Passer la séance').should('not.exist')
   })
 })
