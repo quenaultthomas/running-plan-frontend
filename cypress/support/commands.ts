@@ -24,6 +24,8 @@ Cypress.Commands.add('login', (
     body: { username, password },
   }).then(({ body }) => {
     window.localStorage.setItem('token', body.token)
+    window.localStorage.setItem('userId', body.userId)
+    window.localStorage.setItem('username', body.username)
   })
 })
 
