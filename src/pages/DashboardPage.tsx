@@ -195,12 +195,17 @@ export default function DashboardPage() {
       <header className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-600">Running Plan</h1>
-          <button
-            onClick={logout}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Déconnexion
-          </button>
+          <div className="flex items-center gap-4">
+            <Link to="/profile" className="text-sm text-gray-500 hover:text-gray-700">
+              Profil
+            </Link>
+            <button
+              onClick={logout}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
       </header>
 
