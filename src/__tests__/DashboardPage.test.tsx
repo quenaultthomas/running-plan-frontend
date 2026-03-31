@@ -29,6 +29,13 @@ vi.mock('../services/plan', () => ({
   getPlanStats: mockGetPlanStats,
 }))
 
+const mockGetStravaStatus = vi.hoisted(() => vi.fn())
+const mockSyncStrava = vi.hoisted(() => vi.fn())
+vi.mock('../services/strava', () => ({
+  getStravaStatus: mockGetStravaStatus,
+  syncStrava: mockSyncStrava,
+}))
+
 const STATS = {
   totalSessions: 112,
   completedSessions: 56,
@@ -72,6 +79,7 @@ beforeEach(() => {
   mockUseAuth.mockReturnValue({ logout: vi.fn() })
   mockUsePWAInstall.mockReturnValue({ canInstall: false, install: vi.fn() })
   mockGetPlanStats.mockResolvedValue(STATS)
+  mockGetStravaStatus.mockResolvedValue({ connected: false })
 })
 
 afterEach(() => {
@@ -564,5 +572,85 @@ describe('DashboardPage — citation motivante', () => {
     )
     await screen.findByRole('figure')
     expect(sessionStorage.getItem('dashboard_citation')).toBe(first)
+  })
+})
+
+// ─── Sync Strava ───────────────────────────────────────────────────────────
+
+describe('DashboardPage — sync Strava', () => {
+  it("n'affiche pas le bouton Strava si non connecté", async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: false })
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByText('Plan marathon Paris')
+    expect(
+      screen.queryByRole('button', { name: /synchroniser avec strava/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("n'affiche pas le bouton Strava si aucun plan", async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue([])
+    renderPage()
+    await screen.findByText(/Aucun plan pour l'instant/i)
+    expect(
+      screen.queryByRole('button', { name: /synchroniser avec strava/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('affiche le bouton "Synchroniser avec Strava" si connecté et plans présents', async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue(PLANS)
+    renderPage()
+    await screen.findByRole('button', { name: /synchroniser avec strava/i })
+  })
+
+  it('appelle syncStrava au clic', async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockSyncStrava.mockResolvedValue({ activitiesAnalyzed: 5, sessionsValidated: 2 })
+    const user = userEvent.setup()
+    renderPage()
+    const btn = await screen.findByRole('button', { name: /synchroniser avec strava/i })
+    await user.click(btn)
+    await waitFor(() => expect(mockSyncStrava).toHaveBeenCalledTimes(1))
+  })
+
+  it('affiche le toast avec le résumé après sync réussie', async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockSyncStrava.mockResolvedValue({ activitiesAnalyzed: 5, sessionsValidated: 2 })
+    const user = userEvent.setup()
+    renderPage()
+    const btn = await screen.findByRole('button', { name: /synchroniser avec strava/i })
+    await user.click(btn)
+    const toast = await screen.findByRole('status')
+    expect(toast).toBeInTheDocument()
+    expect(toast.textContent).toMatch(/5/)
+    expect(toast.textContent).toMatch(/activités analysées/i)
+    expect(toast.textContent).toMatch(/2/)
+    expect(toast.textContent).toMatch(/séances validées automatiquement/i)
+  })
+
+  it('désactive le bouton pendant la synchronisation', async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockSyncStrava.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    renderPage()
+    const btn = await screen.findByRole('button', { name: /synchroniser avec strava/i })
+    await user.click(btn)
+    expect(await screen.findByRole('button', { name: /synchronisation…/i })).toBeDisabled()
+  })
+
+  it('rafraîchit les statistiques après une sync réussie', async () => {
+    mockGetStravaStatus.mockResolvedValue({ connected: true })
+    mockGetPlans.mockResolvedValue(PLANS)
+    mockSyncStrava.mockResolvedValue({ activitiesAnalyzed: 3, sessionsValidated: 1 })
+    const user = userEvent.setup()
+    renderPage()
+    const btn = await screen.findByRole('button', { name: /synchroniser avec strava/i })
+    await user.click(btn)
+    await waitFor(() => expect(mockGetPlanStats).toHaveBeenCalledTimes(2))
   })
 })

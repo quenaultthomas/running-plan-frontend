@@ -671,6 +671,14 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
                       >
                         ✅ Réalisée
                       </span>
+                      {session.stravaActivityId != null && (
+                        <span
+                          className="inline-flex items-center text-xs font-medium text-white px-2 py-1 rounded-full"
+                          style={{ backgroundColor: '#FC4C02' }}
+                        >
+                          Via Strava
+                        </span>
+                      )}
                       {session.completedAt && (
                         <span className="text-xs text-gray-400">
                           le {formatCompletedAt(session.completedAt)}

@@ -22,4 +22,5 @@ export interface Session {
   distance: number
   duration: number
   notes: string
+  stravaActivityId?: number
 }
