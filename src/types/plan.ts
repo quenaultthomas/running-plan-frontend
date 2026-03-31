@@ -190,6 +190,7 @@ export interface PlanSession {
   completedAt: string | null
   skippedAt: string | null
   blocks?: SessionBlock[]
+  stravaActivityId?: number
 }
 
 export interface PlanWeek {
