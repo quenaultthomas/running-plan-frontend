@@ -658,17 +658,12 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
 
                   {/* Détails réels Strava */}
                   {session.stravaActivityId != null && (
-                    session.stravaName != null ||
-                    session.stravaDistanceKm != null ||
-                    session.stravaDurationMin != null ||
-                    session.stravaAvgPace != null
-                  ) && (
-                    <p className="text-xs text-gray-400 italic mt-1">
+                    <p className="text-gray-500 italic text-sm mt-1">
                       {[
                         session.stravaName,
                         session.stravaDistanceKm != null ? `${session.stravaDistanceKm} km` : null,
                         session.stravaDurationMin != null ? `${session.stravaDurationMin} min` : null,
-                        session.stravaAvgPace != null ? `${session.stravaAvgPace} /km` : null,
+                        session.stravaAvgPace ? `${session.stravaAvgPace} /km` : null,
                       ]
                         .filter(Boolean)
                         .join(' · ')}
@@ -727,7 +722,7 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
                           style={{ backgroundColor: '#FC4C02' }}
                           aria-label="Séance validée via Strava"
                         >
-                          🟠 Via Strava
+                          Réalisée via Strava
                         </span>
                       ) : (
                         <span
