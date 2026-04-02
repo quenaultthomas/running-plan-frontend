@@ -36,6 +36,10 @@ vi.mock('../services/strava', () => ({
   syncStrava: mockSyncStrava,
 }))
 
+vi.mock('../components/ProgressionCharts', () => ({
+  default: () => <div data-testid="progression-charts" />,
+}))
+
 const STATS = {
   totalSessions: 112,
   completedSessions: 56,

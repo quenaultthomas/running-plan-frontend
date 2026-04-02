@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePWAInstall } from '../hooks/usePWAInstall'
 import { CITATIONS, Citation } from '../data/citations'
 import { archivePlan, deletePlan, getPlans, getPlanStats } from '../services/plan'
+import ProgressionCharts from '../components/ProgressionCharts'
 import { getStravaStatus, syncStrava, StravaSyncResponse } from '../services/strava'
 import { DAY_LABELS, PlanStats, PlanSummaryWithProgress, SESSION_TYPE_LABELS } from '../types/plan'
 
@@ -373,6 +374,13 @@ export default function DashboardPage() {
             </div>
           </section>
         )}
+
+        {/* ── Graphiques de progression ─────────────────────────────── */}
+        {statsState.status === 'success' &&
+          statsState.stats.weeklyStats &&
+          statsState.stats.weeklyStats.length > 0 && (
+            <ProgressionCharts weeklyStats={statsState.stats.weeklyStats} />
+          )}
 
         {/* ── Sync Strava ─────────────────────────────────────────────── */}
         {stravaConnected && state.status === 'success' && state.plans.length > 0 && (

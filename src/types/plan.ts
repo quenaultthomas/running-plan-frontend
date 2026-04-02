@@ -256,6 +256,15 @@ export interface PlanStatsNextSession {
   goal: string
 }
 
+export interface WeeklyStat {
+  weekNumber: number
+  startDate: string
+  plannedDistanceKm: number
+  actualDistanceKm: number
+  plannedDurationMin: number
+  actualDurationMin: number
+}
+
 export interface PlanStats {
   totalSessions: number
   completedSessions: number
@@ -265,4 +274,5 @@ export interface PlanStats {
   currentWeekNumber: number
   totalWeeks: number
   nextSession: PlanStatsNextSession | null
+  weeklyStats?: WeeklyStat[]
 }
