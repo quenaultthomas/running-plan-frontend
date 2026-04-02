@@ -96,7 +96,7 @@ describe('PlanDetailPage — détails réels Strava', () => {
   it('affiche les détails Strava sous les infos prévues', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     const details = screen.getByText(/Footing matinal/)
     expect(details.textContent).toContain('8.2 km')
     expect(details.textContent).toContain('46 min')
@@ -106,7 +106,7 @@ describe('PlanDetailPage — détails réels Strava', () => {
   it('affiche les champs disponibles séparés par " · "', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     const details = screen.getByText(/Footing matinal/)
     expect(details.textContent).toBe('Footing matinal · 8.2 km · 46 min · 5:37 /km')
   })
@@ -114,7 +114,7 @@ describe('PlanDetailPage — détails réels Strava', () => {
   it("n'affiche qu'un seul bloc de détails Strava", async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     const detailsElements = document.querySelectorAll('p.italic')
     expect(detailsElements).toHaveLength(1)
     expect(detailsElements[0].textContent).toContain('Footing matinal')
@@ -136,7 +136,7 @@ describe('PlanDetailPage — détails réels Strava', () => {
     }
     mockGetPlanById.mockResolvedValue(planPartial)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     const details = screen.getByText(/Course rapide/)
     expect(details.textContent).toBe('Course rapide · 10 km')
   })
@@ -153,13 +153,13 @@ describe('PlanDetailPage — détails réels Strava', () => {
   })
 })
 
-// ─── Correction 2 — Badge 🟠 Via Strava remplace ✅ Réalisée ──────────────
+// ─── Correction 2 — Badge "Réalisée via Strava" remplace ✅ Réalisée ────────
 
-describe('PlanDetailPage — badge Via Strava remplace ✅ Réalisée', () => {
-  it('affiche "🟠 Via Strava" pour une séance COMPLETED avec stravaActivityId', async () => {
+describe('PlanDetailPage — badge "Réalisée via Strava" remplace ✅ Réalisée', () => {
+  it('affiche "Réalisée via Strava" pour une séance COMPLETED avec stravaActivityId', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    expect(await screen.findByText(/Via Strava/)).toBeInTheDocument()
+    expect(await screen.findByText('Réalisée via Strava')).toBeInTheDocument()
   })
 
   it("n'affiche pas '✅ Réalisée' pour une séance validée via Strava", async () => {
@@ -169,8 +169,8 @@ describe('PlanDetailPage — badge Via Strava remplace ✅ Réalisée', () => {
     }
     mockGetPlanById.mockResolvedValue(planOnlyStrava)
     renderPage()
-    await screen.findByText(/Via Strava/)
-    expect(screen.queryByText(/Réalisée/)).not.toBeInTheDocument()
+    await screen.findByText('Réalisée via Strava')
+    expect(screen.queryByText('✅ Réalisée')).not.toBeInTheDocument()
   })
 
   it("affiche '✅ Réalisée' pour une séance COMPLETED sans stravaActivityId", async () => {
@@ -180,22 +180,22 @@ describe('PlanDetailPage — badge Via Strava remplace ✅ Réalisée', () => {
     }
     mockGetPlanById.mockResolvedValue(planOnlyManual)
     renderPage()
-    expect(await screen.findByText(/Réalisée/)).toBeInTheDocument()
-    expect(screen.queryByText(/Via Strava/)).not.toBeInTheDocument()
+    expect(await screen.findByText('✅ Réalisée')).toBeInTheDocument()
+    expect(screen.queryByText('Réalisée via Strava')).not.toBeInTheDocument()
   })
 
-  it('affiche exactement 1 badge Via Strava et 1 badge Réalisée dans le plan mixte', async () => {
+  it('affiche 1 badge "Réalisée via Strava" et 1 badge "✅ Réalisée" dans le plan mixte', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
-    expect(screen.getAllByText(/Via Strava/)).toHaveLength(1)
-    expect(screen.getAllByText(/Réalisée/)).toHaveLength(1)
+    await screen.findByText('Réalisée via Strava')
+    expect(screen.getAllByText('Réalisée via Strava')).toHaveLength(1)
+    expect(screen.getAllByText('✅ Réalisée')).toHaveLength(1)
   })
 
   it('conserve la date de validation sous le badge Strava', async () => {
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     // completedAt: 2026-03-20 → formatCompletedAt → 20/03/2026
     expect(screen.getByText(/20\/03\/2026/)).toBeInTheDocument()
   })
@@ -208,7 +208,7 @@ describe('PlanDetailPage — bouton Synchroniser avec Strava', () => {
     mockGetStravaStatus.mockResolvedValue({ connected: false })
     mockGetPlanById.mockResolvedValue(PLAN)
     renderPage()
-    await screen.findByText(/Via Strava/)
+    await screen.findByText('Réalisée via Strava')
     expect(
       screen.queryByRole('button', { name: /synchroniser avec strava/i }),
     ).not.toBeInTheDocument()
