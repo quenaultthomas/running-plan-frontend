@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router-dom'
 import { completeSession, getPlanById, skipSession, updateSession } from '../services/plan'
+import { getStravaStatus, syncStrava } from '../services/strava'
 import {
   ALL_DAYS,
   BLOCK_TYPE_ICONS,
@@ -296,6 +297,8 @@ export default function PlanDetailPage() {
   const { planId } = useParams<{ planId: string }>()
   const [state, setState] = useState<PageState>({ status: 'loading' })
   const [weekIdx, setWeekIdx] = useState(0)
+  const [stravaConnected, setStravaConnected] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     if (!planId) return
@@ -307,6 +310,28 @@ export default function PlanDetailPage() {
       })
       .catch(() => setState({ status: 'error' }))
   }, [planId])
+
+  useEffect(() => {
+    getStravaStatus()
+      .then((s) => setStravaConnected(s.connected))
+      .catch(() => {})
+  }, [])
+
+  const handleStravaSync = async () => {
+    if (!planId) return
+    setSyncing(true)
+    try {
+      await syncStrava()
+      const plan = await getPlanById(planId)
+      const idx = currentWeekIndex(plan.weeks)
+      setWeekIdx(idx >= 0 ? idx : weekIdx)
+      setState({ status: 'success', plan })
+    } catch {
+      // ignore silently
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleSessionComplete = (sessionId: string, completedAt: string) => {
     setState((prev) => {
@@ -379,9 +404,21 @@ export default function PlanDetailPage() {
       <header className="bg-white shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-600">Running Plan</h1>
-          <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
-            Tableau de bord
-          </Link>
+          <div className="flex items-center gap-3">
+            {stravaConnected && state.status === 'success' && (
+              <button
+                onClick={handleStravaSync}
+                disabled={syncing}
+                className="text-xs px-3 py-1.5 text-white font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#FC4C02' }}
+              >
+                {syncing ? 'Synchronisation…' : 'Synchroniser avec Strava'}
+              </button>
+            )}
+            <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+              Tableau de bord
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -681,25 +718,25 @@ function WeekCard({ week, isCurrent, planId, onSessionComplete, onSessionSkip, o
                     Modifier
                   </button>
 
-                  {/* Badge Via Strava (visible dès que stravaActivityId est renseigné) */}
-                  {session.stravaActivityId != null && (
-                    <span
-                      className="inline-flex items-center text-xs font-medium text-white px-2 py-1 rounded-full"
-                      style={{ backgroundColor: '#FC4C02' }}
-                    >
-                      Via Strava
-                    </span>
-                  )}
-
                   {/* COMPLETED */}
                   {session.status === 'COMPLETED' && (
                     <>
-                      <span
-                        className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full"
-                        aria-label="Séance réalisée"
-                      >
-                        ✅ Réalisée
-                      </span>
+                      {session.stravaActivityId != null ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-medium text-white px-2 py-1 rounded-full"
+                          style={{ backgroundColor: '#FC4C02' }}
+                          aria-label="Séance validée via Strava"
+                        >
+                          🟠 Via Strava
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full"
+                          aria-label="Séance réalisée"
+                        >
+                          ✅ Réalisée
+                        </span>
+                      )}
                       {session.completedAt && (
                         <span className="text-xs text-gray-400">
                           le {formatCompletedAt(session.completedAt)}

@@ -16,6 +16,11 @@ vi.mock('../services/plan', () => ({
   updateSession: mockUpdateSession,
 }))
 
+vi.mock('../services/strava', () => ({
+  getStravaStatus: vi.fn().mockResolvedValue({ connected: false }),
+  syncStrava: vi.fn(),
+}))
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────
 
 const SESSION_BASE = {
