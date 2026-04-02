@@ -27,6 +27,10 @@ const SESSION_STRAVA = {
   completedAt: '2026-03-20T08:00:00Z',
   skippedAt: null,
   stravaActivityId: 12345678,
+  stravaName: 'Footing matinal',
+  stravaDistanceKm: 8.2,
+  stravaDurationMin: 46,
+  stravaAvgPace: '5:37',
 }
 
 const SESSION_NO_STRAVA = {
@@ -90,7 +94,7 @@ describe('PlanDetailPage — badge Via Strava', () => {
     expect(screen.getAllByText('Via Strava')).toHaveLength(1)
   })
 
-  it("n'affiche pas le badge pour une séance PENDING", async () => {
+  it('affiche le badge "Via Strava" pour une séance PENDING avec stravaActivityId', async () => {
     const planWithPending = {
       ...PLAN,
       weeks: [
@@ -108,8 +112,65 @@ describe('PlanDetailPage — badge Via Strava', () => {
     }
     mockGetPlanById.mockResolvedValue(planWithPending)
     renderPage()
-    // Attendre que le plan charge
     await screen.findByText('Footing de récupération')
-    expect(screen.queryByText('Via Strava')).not.toBeInTheDocument()
+    expect(screen.getByText('Via Strava')).toBeInTheDocument()
+  })
+})
+
+// ─── Tests détails Strava ──────────────────────────────────────────────────
+
+describe('PlanDetailPage — détails réels Strava', () => {
+  it('affiche les détails Strava sous les infos prévues', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByText('Via Strava')
+    const details = screen.getByText(/Footing matinal/)
+    expect(details).toBeInTheDocument()
+    expect(details.textContent).toContain('8.2 km')
+    expect(details.textContent).toContain('46 min')
+    expect(details.textContent).toContain('5:37 /km')
+  })
+
+  it('affiche les champs disponibles séparés par " · "', async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByText('Via Strava')
+    const details = screen.getByText(/Footing matinal/)
+    expect(details.textContent).toBe('Footing matinal · 8.2 km · 46 min · 5:37 /km')
+  })
+
+  it("n'affiche qu'un seul bloc de détails Strava (SESSION_NO_STRAVA n'en a pas)", async () => {
+    mockGetPlanById.mockResolvedValue(PLAN)
+    renderPage()
+    await screen.findByText('Via Strava')
+    // Un seul élément de détails Strava : celui de SESSION_STRAVA
+    const detailsElements = document.querySelectorAll('p.italic')
+    expect(detailsElements).toHaveLength(1)
+    expect(detailsElements[0].textContent).toContain('Footing matinal')
+  })
+
+  it('affiche uniquement les champs non nuls si certains manquent', async () => {
+    const planPartial = {
+      ...PLAN,
+      weeks: [
+        {
+          ...PLAN.weeks[0],
+          sessions: [
+            {
+              ...SESSION_STRAVA,
+              stravaName: 'Course rapide',
+              stravaDistanceKm: 10,
+              stravaDurationMin: undefined,
+              stravaAvgPace: undefined,
+            },
+          ],
+        },
+      ],
+    }
+    mockGetPlanById.mockResolvedValue(planPartial)
+    renderPage()
+    await screen.findByText('Via Strava')
+    const details = screen.getByText(/Course rapide/)
+    expect(details.textContent).toBe('Course rapide · 10 km')
   })
 })

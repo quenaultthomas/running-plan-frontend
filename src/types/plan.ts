@@ -191,6 +191,10 @@ export interface PlanSession {
   skippedAt: string | null
   blocks?: SessionBlock[]
   stravaActivityId?: number
+  stravaName?: string
+  stravaDistanceKm?: number
+  stravaDurationMin?: number
+  stravaAvgPace?: string
 }
 
 export interface PlanWeek {

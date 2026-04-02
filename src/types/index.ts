@@ -23,4 +23,8 @@ export interface Session {
   duration: number
   notes: string
   stravaActivityId?: number
+  stravaName?: string
+  stravaDistanceKm?: number
+  stravaDurationMin?: number
+  stravaAvgPace?: string
 }
